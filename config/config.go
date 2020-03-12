@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
     "strings"
+    "github.com/sirupsen/logrus"
 )
 const ProjectName = "supraworker"
 
@@ -44,32 +45,40 @@ var (
 		//     },
 		// },
 	}
+    log = logrus.WithFields(logrus.Fields{"package": "config"})
+
 )
 
 // Init configuration
 func init() {
-	configCMD.PersistentFlags().StringVar(&CfgFile, "config", "", "config file (default is $HOME/supraworker.yaml)")
-	viper.SetDefault("license", "apache")
-	configCMD.PersistentFlags().Bool("viper", true, "use Viper for configuration")
-	viper.Set("Verbose", true)
+
+	// configCMD.PersistentFlags().StringVar(&CfgFile, "config", "", "config file (default is $HOME/supraworker.yaml)")
+	// viper.SetDefault("license", "apache")
+	// configCMD.PersistentFlags().Bool("viper", true, "use Viper for configuration")
+	// viper.Set("Verbose", true)
     cobra.OnInitialize(initConfig)
+    // rootCmd.AddCommand(configCMD)
+
 
 }
 
-var configCMD = &cobra.Command{
-	Use:   "config",
-	Run: func(command *cobra.Command, args []string) {
-	},
-}
+// var configCMD = &cobra.Command{
+// 	Use:   "config",
+// 	Run: func(command *cobra.Command, args []string) {
+//         log.Debug("viper config file:", viper.ConfigFileUsed())
+// 	},
+// }
 
 func initConfig() {
 	// Don't forget to read config either from CfgFile or from home directory!
+    // log.Info("logrus")
 	if CfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(CfgFile)
 	} else {
-		lProjectName := strings.ToLower(ProjectName)
 
+		lProjectName := strings.ToLower(ProjectName)
+        log.Debug("Searching for config with project",ProjectName)
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("..")
 		viper.AddConfigPath("$HOME/")
@@ -85,13 +94,13 @@ func initConfig() {
 	}
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(1)
+		logrus.Fatal("Can't read config:", err)
 	}
     err := viper.Unmarshal(&C)
     if err != nil {
-        fmt.Println("unable to decode into struct, %v", err)
-        os.Exit(1)
+        logrus.Fatal(fmt.Sprintf("unable to decode into struct, %v", err))
+
     }
-    // fmt.Println(viper.ConfigFileUsed())
+    log.Debug(viper.ConfigFileUsed())
+
 }

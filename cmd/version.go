@@ -21,6 +21,8 @@ const Version = "0.1.1"
 // such as "dev" (in development), "beta", "rc1", etc.
 const VersionPrerelease = "dev"
 
+
+// Return formatted version as string
 func FormattedVersion() string {
 	var versionString bytes.Buffer
 	fmt.Fprintf(&versionString, "Supraworker v")
@@ -36,6 +38,7 @@ func FormattedVersion() string {
 	return versionString.String()
 }
 
+// version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of Supraworker",

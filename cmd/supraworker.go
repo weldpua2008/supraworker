@@ -4,13 +4,37 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
+	// "os"
 	// "strings"
     "html/template"
     "bytes"
     config "github.com/weldpua2008/supraworker/config"
+    "github.com/sirupsen/logrus"
 
 )
+
+var (
+verbose bool
+log = logrus.WithFields(logrus.Fields{"package": "cmd"})
+
+)
+
+func init() {
+
+  // Output to stdout instead of the default stderr
+  // Can be any io.Writer, see below for File example
+  // logrus.SetFormatter(&logrus.JSONFormatter{})
+
+  // logrus.SetOutput(os.Stdout)
+  logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, FullTimestamp: true, TimestampFormat: "2020-03-12 15:00:05"})
+  rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
+  // Only log the warning severity or above.
+  // logrus.SetLevel(logrus.InfoLevel)
+  logrus.SetLevel(logrus.InfoLevel)
+}
+
+
+
 
 var rootCmd = &cobra.Command{
 	Use:   "supraworker",
@@ -20,11 +44,15 @@ var rootCmd = &cobra.Command{
                 Complete documentation is available at github.com/weldpua2008/supraworker/cmd`,
 	Version: FormattedVersion(),
 	Run: func(cmd *cobra.Command, args []string) {
+        if verbose {
+            logrus.SetLevel(logrus.DebugLevel)
+        }
+        log.Trace("Config file:", viper.ConfigFileUsed())
 
-		fmt.Println(viper.GetString("jobs.get.url"))
-        // fmt.Println(viper.GetStringMapString("jobs.get.headers"))
-        fmt.Println(viper.GetStringMapString("headers"))
-        // fmt.Printf("%T\n", viper)
+		log.Debug(viper.GetString("jobs.get.url"))
+        // log.Debug(viper.GetStringMapString("jobs.get.headers"))
+        log.Debug(viper.GetStringMapString("headers"))
+
         t:=viper.GetStringMapString("jobs.get.params")
 
         for k, v := range t {
@@ -33,22 +61,23 @@ var rootCmd = &cobra.Command{
             err := tpl.Execute(&tpl_bytes, config.C)
             fmt.Println("")
     		if err != nil {
-    			fmt.Println("executing template:", err)
+    			log.Warn("executing template:", err)
     		}
-            fmt.Printf("%s -> %s\n", k, tpl_bytes.String())
+            log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
 
         }
-fmt.Println(t)
-fmt.Println("---")
-		fmt.Println(config.C)
-		fmt.Println("Done")
+        // fmt.Println(t)
+        // fmt.Println("---")
+		// fmt.Println(config.C)
+		// fmt.Println("Done")
+
+        log.Info("Finished")
 
 	},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
