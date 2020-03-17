@@ -2,18 +2,20 @@ package cmd
 
 import (
 	"fmt"
-    "os"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-    "strings"
-    "github.com/sirupsen/logrus"
+	"os"
+	"strings"
 )
+
 const ProjectName = "supraworker"
 
 type Config struct {
-    ClientId string `mapstructure:"clientId"`
-	JobsAPI ApiOperations `mapstructure:"jobs"`
-	LogsAPI ApiOperations `mapstructure:"logs"`
+	ClientId        string        `mapstructure:"clientId"`
+	JobsAPI         ApiOperations `mapstructure:"jobs"`
+	LogsAPI         ApiOperations `mapstructure:"logs"`
+	CallAPIDelaySec int           `mapstructure:"api_delay_sec"`
 }
 
 type ApiOperations struct {
@@ -25,16 +27,18 @@ type ApiOperations struct {
 }
 
 type UrlConf struct {
-	Url    string `mapstructure:"url"`
-	Method string `mapstructure:"method"`
-	Headers      map[string]string `mapstructure:"headers"`
+	Url             string            `mapstructure:"url"`
+	Method          string            `mapstructure:"method"`
+	Headers         map[string]string `mapstructure:"headers"`
 	PreservedFields map[string]string `mapstructure:"preservedfields"`
-	Params       map[string]string `mapstructure:"params"`
+	Params          map[string]string `mapstructure:"params"`
 }
 
 var (
 	CfgFile string
 	C       Config = Config{
+		CallAPIDelaySec: int(2),
+
 		// JobsAPI: UrlConf{
 		//     Method: "GET",
 		//     Headers: []RequestHeader{
@@ -45,8 +49,7 @@ var (
 		//     },
 		// },
 	}
-    log = logrus.WithFields(logrus.Fields{"package": "config"})
-
+	log = logrus.WithFields(logrus.Fields{"package": "config"})
 )
 
 // Init configuration
@@ -56,9 +59,8 @@ func init() {
 	// viper.SetDefault("license", "apache")
 	// configCMD.PersistentFlags().Bool("viper", true, "use Viper for configuration")
 	// viper.Set("Verbose", true)
-    cobra.OnInitialize(initConfig)
-    // rootCmd.AddCommand(configCMD)
-
+	cobra.OnInitialize(initConfig)
+	// rootCmd.AddCommand(configCMD)
 
 }
 
@@ -71,14 +73,14 @@ func init() {
 
 func initConfig() {
 	// Don't forget to read config either from CfgFile or from home directory!
-    // log.Info("logrus")
+	// log.Info("logrus")
 	if CfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(CfgFile)
 	} else {
 
 		lProjectName := strings.ToLower(ProjectName)
-        log.Debug("Searching for config with project",ProjectName)
+		log.Debug("Searching for config with project", ProjectName)
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("..")
 		viper.AddConfigPath("$HOME/")
@@ -96,11 +98,11 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		logrus.Fatal("Can't read config:", err)
 	}
-    err := viper.Unmarshal(&C)
-    if err != nil {
-        logrus.Fatal(fmt.Sprintf("unable to decode into struct, %v", err))
+	err := viper.Unmarshal(&C)
+	if err != nil {
+		logrus.Fatal(fmt.Sprintf("unable to decode into struct, %v", err))
 
-    }
-    log.Debug(viper.ConfigFileUsed())
+	}
+	log.Debug(viper.ConfigFileUsed())
 
 }

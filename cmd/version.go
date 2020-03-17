@@ -21,7 +21,6 @@ const Version = "0.1.1"
 // such as "dev" (in development), "beta", "rc1", etc.
 const VersionPrerelease = "dev"
 
-
 // Return formatted version as string
 func FormattedVersion() string {
 	var versionString bytes.Buffer
