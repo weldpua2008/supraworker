@@ -27,34 +27,34 @@ func StartGenerateJobs(jobs chan model.Job, ctx context.Context, interval time.D
 		for {
 			select {
 			case <-ctx.Done():
-                close(jobs)
-                // empty jobs channel
-                if len(jobs) > 0 {
-                    log.Trace(fmt.Sprintf("jobs chan still has size %v", len(jobs)))
-                    for len(jobs) > 0 {
-                          <-jobs
-                    }
-                }
-    			localdone <- j
-                if GracefullShutdown(jobs) {
-        			log.Info("Finished")
-        		} else {
-        			log.Info("Failed to shutdown jobs")
-        		}
+				close(jobs)
+				// empty jobs channel
+				if len(jobs) > 0 {
+					log.Trace(fmt.Sprintf("jobs chan still has size %v", len(jobs)))
+					for len(jobs) > 0 {
+						<-jobs
+					}
+				}
+				localdone <- j
+				if GracefullShutdown(jobs) {
+					log.Info("Finished")
+				} else {
+					log.Info("Failed to shutdown jobs")
+				}
 
 				return
 			default:
 				// example Job
 				job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("echo %v && date&&sleep 5 && echo $(date);exit1", j))
-                // ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-                // defer cancel()
-                // job.SetContext(&ctx)
-                job.SetContext(ctx)
-                job.TTR=10000000
-                JobsRegistry.Add(job)
+				// ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+				// defer cancel()
+				// job.SetContext(&ctx)
+				job.SetContext(ctx)
+				job.TTR = 10000000
+				JobsRegistry.Add(job)
 				jobs <- *job
 				log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
-                // time.Sleep(500 *time.Millisecond)
+				// time.Sleep(500 *time.Millisecond)
 				// time.Sleep(interval)
 				j += 1
 				// localdone <- j
@@ -94,7 +94,7 @@ func StartGenerateJobs(jobs chan model.Job, ctx context.Context, interval time.D
 	n1 := <-localCancelDone
 	defer ticker.Stop()
 
-    // log.Debug(fmt.Sprintf("Cannel jobs has size %s", len(jobs)))
+	// log.Debug(fmt.Sprintf("Cannel jobs has size %s", len(jobs)))
 	time.Sleep(50 * time.Millisecond)
 	log.Info(fmt.Sprintf("Sent %v jobs", n))
 	if n1 > 0 {
