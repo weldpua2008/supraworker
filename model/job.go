@@ -1,9 +1,12 @@
 package model
 
 import (
-	"time"
-
+	"os/exec"
 	"sync"
+	"time"
+    "io"
+    "fmt"
+    "bufio"
 )
 
 // Registry holds all Job Records.
@@ -40,6 +43,7 @@ type Job struct {
 	TTL            uint64 // max time to live in seconds
 	TTR            uint64 // Time-to-run
 	CMD            string // Comamand
+    StreamInterval time.Duration
 	mu             sync.RWMutex
 }
 
@@ -64,15 +68,109 @@ func (j *Job) Cancel() error {
 	return nil
 }
 
+// Cancel job
+// update your API
+func (j *Job) SendLogStream(logStream []string) error {
+	for _, oneStream := range logStream {
+        fmt.Printf("%s",oneStream)
+    }
+	return nil
+
+}
+
+func (j Job) runcmd() error {
+
+	cmd := exec.Command("bash", "-c", j.CMD)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("cmd.StdoutPipe, %s",err)
+	}
+
+    stderr  , err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cmd.StderrPipe, %s",err)
+	}
+	err =  cmd.Start()
+    if err != nil {
+    		return fmt.Errorf("cmd.Start, %s",err)
+    }
+    jobs := make(chan string)
+    done := make(chan bool)
+    logSent := make(chan bool)
+    // parse stdout & stderr
+    go func() {
+		merged := io.MultiReader(stderr, stdout)
+		scanner := bufio.NewScanner(merged)
+        defer func() {
+    		 done <- true
+             logSent <- true
+    	}()
+
+		for scanner.Scan() {
+			msg := scanner.Text()
+            jobs <- fmt.Sprintf("%s\n", msg)
+		}
+	}()
+
+    // send logs to streaming API
+    go func() {
+        var logsCache []string
+
+        ticker := time.NewTicker(j.StreamInterval)
+        defer ticker.Stop()
+        for {
+            select {
+            case msg := <-jobs :
+                    logsCache = append(logsCache, msg)
+                    if len(logsCache) > 10 {
+                        j.SendLogStream(logsCache )
+                        logsCache = nil
+                    }
+            case <-done:
+                // TODO: catch error
+                j.SendLogStream(logsCache )
+                return
+            case  <-ticker.C:
+                if len(logsCache) > 0 {
+                    // TODO: catch error
+                    j.SendLogStream(logsCache )
+                    logsCache = nil
+                }
+            }
+        }
+
+    }()
+    //
+    //
+	// buf := bufio.NewReader(stdout) // Notice that this is not in a loop
+	// num := 1
+	// for {
+	// 	// line, _, _ := buf.ReadLine()
+    //     line, err := buf.ReadString('\n')
+    //     if err == io.EOF {
+    //         break
+    //     }
+    //     if err != nil && err != io.EOF {
+    //           return err
+    //     }
+    //
+	// 	num += 1
+	// 	fmt.Println(string(line))
+	// }
+    <- logSent
+    return nil
+}
+
 // Run job
 // return error in case we have exit code greater then 0
 func (j Job) Run() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.StartAt = time.Now()
+    err:= j.runcmd()
 	j.updatelastActivity()
 	j.updateStatus(JOB_STATUS_IN_PROGRESS)
-	return nil
+	return err
 }
 
 // Finish sucessfull job
@@ -96,6 +194,7 @@ func NewJob(id string, cmd string) *Job {
 		MaxAttempts:    1,
 		CMD:            cmd,
 		TTL:            1,
+        StreamInterval: time.Duration(5) * time.Second,
 	}
 }
 

@@ -31,7 +31,7 @@ func StartGenerateJobs(jobs chan<- model.Job, ctx context.Context, interval time
 				return
 			default:
 				// example Job
-				job := model.NewJob(fmt.Sprintf("cmd-%v", j), fmt.Sprintf("%v", j))
+				job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("echo %v && date && echo $(date)", j))
 				jobs <- *job
 				JobsRegistry.Add(job)
 				log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
