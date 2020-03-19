@@ -157,8 +157,12 @@ func (j Job) runcmd() error {
 	// 	num += 1
 	// 	fmt.Println(string(line))
 	// }
+    // if err = cmd.Wait(); err != nil {
+	// 	log.Info(fmt.Errorf("cmd.Wait, %s",err))
+	// }
+    err = cmd.Wait()
     <- logSent
-    return nil
+    return err
 }
 
 // Run job
