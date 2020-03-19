@@ -16,7 +16,7 @@ var (
 
 // StartGenerateJobs gorutine for getting jobs from API with internal
 // exists on kill
-func StartGenerateJobs(jobs chan<- model.Job, ctx context.Context, interval time.Duration) {
+func StartGenerateJobs(jobs chan model.Job, ctx context.Context, interval time.Duration) {
 	localdone := make(chan int, 1)
 	localCancelDone := make(chan int, 1)
 	log.Info(fmt.Sprintf("Starting generate jobs with delay %v seconds", interval))
@@ -27,13 +27,32 @@ func StartGenerateJobs(jobs chan<- model.Job, ctx context.Context, interval time
 		for {
 			select {
 			case <-ctx.Done():
-				localdone <- j
+                close(jobs)
+                // empty jobs channel
+                if len(jobs) > 0 {
+                    log.Trace(fmt.Sprintf("jobs chan still has size %v", len(jobs)))
+                    for len(jobs) > 0 {
+                          <-jobs
+                    }
+                }
+    			localdone <- j
+                if GracefullShutdown(jobs) {
+        			log.Info("Finished")
+        		} else {
+        			log.Info("Failed to shutdown jobs")
+        		}
+
 				return
 			default:
 				// example Job
-				job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("echo %v && date && echo $(date);exit1", j))
+				job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("echo %v && date&&sleep 5 && echo $(date);exit1", j))
+                // ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+                // defer cancel()
+                // job.SetContext(&ctx)
+                job.SetContext(ctx)
+                job.TTR=10000000
+                JobsRegistry.Add(job)
 				jobs <- *job
-				JobsRegistry.Add(job)
 				log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
                 // time.Sleep(500 *time.Millisecond)
 				// time.Sleep(interval)
@@ -73,8 +92,9 @@ func StartGenerateJobs(jobs chan<- model.Job, ctx context.Context, interval time
 
 	n := <-localdone
 	n1 := <-localCancelDone
-	ticker.Stop()
-	close(jobs)
+	defer ticker.Stop()
+
+    // log.Debug(fmt.Sprintf("Cannel jobs has size %s", len(jobs)))
 	time.Sleep(50 * time.Millisecond)
 	log.Info(fmt.Sprintf("Sent %v jobs", n))
 	if n1 > 0 {
@@ -86,7 +106,7 @@ func StartGenerateJobs(jobs chan<- model.Job, ctx context.Context, interval time
 
 // GracefullShutdown cancel all running jobs
 // returns error in case any job failed to cancel
-func GracefullShutdown() bool {
+func GracefullShutdown(jobs <-chan model.Job) bool {
 	JobsRegistry.GracefullShutdown()
 	if JobsRegistry.Len() > 0 {
 		return false

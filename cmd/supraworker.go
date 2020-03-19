@@ -106,11 +106,7 @@ var rootCmd = &cobra.Command{
 		// Block until the WaitGroup counter goes back to 0;
 		// all the workers notified they're done.
 		wg.Wait()
-		if job.GracefullShutdown() {
-			log.Info("Finished")
-		} else {
-			log.Info("Failed to shutdown jobs")
-		}
+		
 		time.Sleep(150 * time.Millisecond)
 
 	},

@@ -25,25 +25,41 @@ func StartWorker(id int, jobs <-chan model.Job, wg *sync.WaitGroup) {
 	}()
 
 	log.Info(fmt.Sprintf("Starting worker %v", id))
-	for {
-		select {
-		case j, more := <-jobs:
-			if more {
-				log.Trace(fmt.Sprintf("Worker %v received Job %v ", id, j.Id))
-				if err := j.Run(); err != nil {
-					log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
-					j.Cancel()
-				} else {
-					dur := time.Now().Sub(j.StartAt)
-					log.Debug(fmt.Sprintf("Job %v finished in %v", j.Id, dur))
-					j.Finish()
-				}
-				job.JobsRegistry.Delete(j.Id)
-			} else {
-				// received all jobs
-				return
-			}
-		}
+    for j := range jobs {
+        			log.Trace(fmt.Sprintf("Worker %v received Job %v ", id, j.Id))
+        			if err := j.Run(); err != nil {
+        				log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
+        				j.Failed()
+        			} else {
+        				dur := time.Now().Sub(j.StartAt)
+        				log.Debug(fmt.Sprintf("Job %v finished in %v", j.Id, dur))
+        				j.Finish()
+        			}
+        			job.JobsRegistry.Delete(j.Id)
+
+
 	}
+	// for {
+    //     log.Debug(fmt.Sprintf("Jobs has size %v", len(jobs)))
+	// 	select {
+	// 	case j, more := <-jobs:
+	// 		if more {
+	// 			log.Info(fmt.Sprintf("Worker %v received Job %v ", id, j.Id))
+	// 			if err := j.Run(); err != nil {
+	// 				log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
+	// 				j.Cancel()
+	// 			} else {
+	// 				dur := time.Now().Sub(j.StartAt)
+	// 				log.Debug(fmt.Sprintf("Job %v finished in %v", j.Id, dur))
+	// 				j.Finish()
+	// 			}
+	// 			job.JobsRegistry.Delete(j.Id)
+	// 		} else {
+    //             log.Info(fmt.Sprintf("Worker %v received all jobs",id))
+	// 			// received all jobs
+	// 			return
+	// 		}
+	// 	}
+	// }
 
 }

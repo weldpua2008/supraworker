@@ -7,6 +7,7 @@ import (
     "io"
     "fmt"
     "bufio"
+    "context"
 )
 
 // Registry holds all Job Records.
@@ -31,6 +32,20 @@ const (
 	JOB_STATUS_CANCELED         = "canceled"
 )
 
+// IsTerminalStatus returns true if status is terminal:
+// - Failed
+// - Canceled
+// - Successfull
+func IsTerminalStatus(status string) bool {
+    switch status {
+    case JOB_STATUS_ERROR:
+    case JOB_STATUS_CANCELED:
+    case JOB_STATUS_SUCCESS:
+        return true
+    }
+    return false
+}
+
 type Job struct {
 	Id             string
 	Priority       int64
@@ -40,11 +55,14 @@ type Job struct {
 	Status         string
 	MaxAttempts    int    // Absoulute max num of attempts.
 	MaxFails       int    // Absolute max number of failures.
-	TTL            uint64 // max time to live in seconds
-	TTR            uint64 // Time-to-run
+	TTL            uint64 // max time to live in Millisecond
+	TTR            uint64 // Time-to-run in seconds
 	CMD            string // Comamand
     StreamInterval time.Duration
 	mu             sync.RWMutex
+    exitError      error
+    cmd            *exec.Cmd
+    ctx            context.Context
 }
 
 func (j *Job) updatelastActivity() {
@@ -52,6 +70,8 @@ func (j *Job) updatelastActivity() {
 }
 
 func (j *Job) updateStatus(status string) error {
+    log.Trace(fmt.Sprintf("Job %s status %s -> %s", j.Id, j.Status, status))
+
 	j.Status = status
 	return nil
 }
@@ -59,10 +79,35 @@ func (j *Job) updateStatus(status string) error {
 // Cancel job
 // update your API
 func (j *Job) Cancel() error {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	if (j.Status == JOB_STATUS_PENDING) || (j.Status == JOB_STATUS_IN_PROGRESS) {
+    if !IsTerminalStatus(j.Status) {
+        log.Trace(fmt.Sprintf("Call Canceled for Job %s", j.Id))
+        if j.cmd != nil &&  j.cmd.Process != nil {
+            if err := j.cmd.Process.Kill(); err != nil {
+                return fmt.Errorf("failed to kill process: %s", err)
+            }
+        }
+        j.mu.Lock()
+    	defer j.mu.Unlock()
 		j.updateStatus(JOB_STATUS_CANCELED)
+		j.updatelastActivity()
+	}
+	return nil
+}
+
+// Cancel job
+// update your API
+func (j *Job) Failed() error {
+    if !IsTerminalStatus(j.Status) {
+        log.Trace(fmt.Sprintf("Call Failed for Job %s", j.Id))
+
+        if j.cmd != nil &&  j.cmd.Process != nil {
+            if err := j.cmd.Process.Kill(); err != nil {
+                return fmt.Errorf("failed to kill process: %s", err)
+            }
+        }
+        j.mu.Lock()
+    	defer j.mu.Unlock()
+		j.updateStatus(JOB_STATUS_ERROR)
 		j.updatelastActivity()
 	}
 	return nil
@@ -78,19 +123,35 @@ func (j *Job) SendLogStream(logStream []string) error {
 
 }
 
-func (j Job) runcmd() error {
+// runcmd executes command
+func (j *Job) runcmd() error {
+    // in case we have time limitation or context
+    if (j.TTR > 0) || (j.ctx != nil) {
+        var ctx context.Context
+        var cancel context.CancelFunc
+        if j.ctx != nil {
+            ctx, cancel = context.WithTimeout(j.ctx, time.Duration(j.TTR)*time.Millisecond)
 
-	cmd := exec.Command("bash", "-c", j.CMD)
-	stdout, err := cmd.StdoutPipe()
+        }else {
+            ctx, cancel = context.WithTimeout(context.Background(), time.Duration(j.TTR)*time.Millisecond)
+        }
+        defer cancel()
+        j.cmd = exec.CommandContext(ctx, "bash", "-c", j.CMD)
+    }else {
+        j.cmd = exec.Command("bash", "-c", j.CMD)
+    }
+
+    log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
+	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("cmd.StdoutPipe, %s",err)
 	}
 
-    stderr  , err := cmd.StderrPipe()
+    stderr  , err := j.cmd.StderrPipe()
 	if err != nil {
 		return fmt.Errorf("cmd.StderrPipe, %s",err)
 	}
-	err =  cmd.Start()
+	err =  j.cmd.Start()
     if err != nil {
     		return fmt.Errorf("cmd.Start, %s",err)
     }
@@ -110,6 +171,7 @@ func (j Job) runcmd() error {
 			msg := scanner.Text()
             jobs <- fmt.Sprintf("%s\n", msg)
 		}
+
 	}()
 
     // send logs to streaming API
@@ -160,31 +222,47 @@ func (j Job) runcmd() error {
     // if err = cmd.Wait(); err != nil {
 	// 	log.Info(fmt.Errorf("cmd.Wait, %s",err))
 	// }
-    err = cmd.Wait()
+    err = j.cmd.Wait()
     <- logSent
     return err
 }
 
 // Run job
 // return error in case we have exit code greater then 0
-func (j Job) Run() error {
-	j.mu.Lock()
-	defer j.mu.Unlock()
+func (j *Job) Run() error {
+
 	j.StartAt = time.Now()
-    err:= j.runcmd()
-	j.updatelastActivity()
+    j.updatelastActivity()
 	j.updateStatus(JOB_STATUS_IN_PROGRESS)
+    err:= j.runcmd()
+    j.mu.Lock()
+	defer j.mu.Unlock()
+    j.exitError = err
+	j.updatelastActivity()
+    if err == nil {
+        j.updateStatus(JOB_STATUS_SUCCESS)
+    } else {
+        j.updateStatus(JOB_STATUS_ERROR)
+    }
 	return err
 }
 
 // Finish sucessfull job
 // update your API
-func (j Job) Finish() error {
+func (j *Job) Finish() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.updatelastActivity()
 	j.updateStatus(JOB_STATUS_SUCCESS)
 	return nil
+}
+
+// SetContext for job
+// in case there is time limit for example
+func (j *Job) SetContext(ctx context.Context) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.ctx = ctx
 }
 
 func NewJob(id string, cmd string) *Job {
@@ -211,12 +289,11 @@ func NewRegistry() *Registry {
 // Add a job.
 // Returns false on duplicate or invalid job id.
 func (r *Registry) Add(rec *Job) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if rec == nil || rec.Id == "" {
 		return false
 	}
-
+    r.mu.Lock()
+	defer r.mu.Unlock()
 	if _, ok := r.all[rec.Id]; ok {
 		return false
 	}
@@ -246,16 +323,23 @@ func (r *Registry) Delete(id string) bool {
 	return true
 }
 
+
 // Cleanup by job TTL.
 // Return number of cleaned jobs.
 func (r *Registry) Cleanup() (num int) {
+    now := time.Now()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	now := time.Now()
 	for k, v := range r.all {
 		end := v.StartAt.Add(time.Duration(v.TTL) * time.Second)
 		if (end.Before(now.Add(-7 * 24 * time.Hour))) || (end.After(now)) {
-			v.Cancel()
+            if !IsTerminalStatus(v.Status) {
+                if err := v.Cancel(); err != nil {
+                    log.Debug(fmt.Sprintf("failed cancel job %s %v",v.Id,err))
+        		} else {
+                    log.Debug(fmt.Sprintf("sucessfully canceled job %s",v.Id))
+                }
+            }
 			delete(r.all, k)
 			num += 1
 		}
@@ -272,10 +356,16 @@ func (r *Registry) GracefullShutdown() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	failed := false
+    log.Debug("start GracefullShutdown")
 	for k, v := range r.all {
-		if err := v.Cancel(); err != nil {
-			failed = true
-		}
+        if !IsTerminalStatus(v.Status) {
+    		if err := v.Cancel(); err != nil {
+                log.Debug(fmt.Sprintf("failed cancel job %s %v",v.Id,err))
+    			failed = true
+    		} else {
+                log.Debug(fmt.Sprintf("sucessfully canceled job %s",v.Id))
+            }
+        }
 		delete(r.all, k)
 	}
 	return failed
