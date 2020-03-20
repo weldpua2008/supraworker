@@ -57,3 +57,24 @@ func TestRegistryLen(t *testing.T) {
 		t.Errorf("Expect %v got length %v", num, r.Len())
 	}
 }
+
+func TestRegistryDelete(t *testing.T) {
+	r := NewRegistry()
+	num := 100
+	for ii := 0; ii < num; ii++ {
+		job := NewJob(fmt.Sprintf("job-%v", ii), fmt.Sprintf("echo"))
+		if !r.Add(job) {
+			t.Errorf("Expect to add job")
+		}
+		if !r.Delete(job.Id) {
+			t.Errorf("Expect to delete job")
+		}
+		if r.Delete(job.Id) {
+			t.Errorf("Expect the job to be already deleted")
+		}
+
+	}
+	if r.Len() != 0 {
+		t.Errorf("Expect %v got length %v", num, r.Len())
+	}
+}

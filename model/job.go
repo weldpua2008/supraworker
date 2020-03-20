@@ -5,10 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+    "os"
 	"os/exec"
 	"sync"
 	"time"
 )
+
+var osGetEnv = os.Getenv
+var execCommand = exec.Command
+var execCommandContext = exec.CommandContext
 
 // Jobber defines a job interface.
 type Jobber interface {
@@ -32,11 +37,11 @@ const (
 // - Successfull
 func IsTerminalStatus(status string) bool {
 	switch status {
-	case JOB_STATUS_ERROR:
-	case JOB_STATUS_CANCELED:
-	case JOB_STATUS_SUCCESS:
-		return true
+    case JOB_STATUS_ERROR,JOB_STATUS_CANCELED,JOB_STATUS_SUCCESS:
+            log.Tracef("IsTerminalStatus %s true",status)
+		    return true
 	}
+    log.Tracef("IsTerminalStatus %s false",status)
 	return false
 }
 
@@ -65,7 +70,6 @@ func (j *Job) updatelastActivity() {
 
 func (j *Job) updateStatus(status string) error {
 	log.Trace(fmt.Sprintf("Job %s status %s -> %s", j.Id, j.Status, status))
-
 	j.Status = status
 	return nil
 }
@@ -84,7 +88,9 @@ func (j *Job) Cancel() error {
 		defer j.mu.Unlock()
 		j.updateStatus(JOB_STATUS_CANCELED)
 		j.updatelastActivity()
-	}
+	}else {
+        log.Trace(fmt.Sprintf("Job %s in terminal '%s' status ", j.Id, j.Status))
+    }
 	return nil
 }
 
@@ -130,9 +136,9 @@ func (j *Job) runcmd() error {
 			ctx, cancel = context.WithTimeout(context.Background(), time.Duration(j.TTR)*time.Millisecond)
 		}
 		defer cancel()
-		j.cmd = exec.CommandContext(ctx, "bash", "-c", j.CMD)
+		j.cmd = execCommandContext(ctx, "bash", "-c", j.CMD)
 	} else {
-		j.cmd = exec.Command("bash", "-c", j.CMD)
+		j.cmd = execCommand("bash", "-c", j.CMD)
 	}
 
 	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
@@ -233,11 +239,13 @@ func (j *Job) Run() error {
 	defer j.mu.Unlock()
 	j.exitError = err
 	j.updatelastActivity()
-	if err == nil {
-		j.updateStatus(JOB_STATUS_SUCCESS)
-	} else {
-		j.updateStatus(JOB_STATUS_ERROR)
-	}
+    if !IsTerminalStatus(j.Status) {
+        	if err == nil {
+    		j.updateStatus(JOB_STATUS_SUCCESS)
+    	} else {
+    		j.updateStatus(JOB_STATUS_ERROR)
+    	}
+    }
 	return err
 }
 
