@@ -15,12 +15,11 @@ var osGetEnv = os.Getenv
 var execCommand = exec.Command
 var execCommandContext = exec.CommandContext
 
-
-func SwitchExecCommand( f func(command string, args ...string) *exec.Cmd  ) {
-    execCommand = f
+func SwitchExecCommand(f func(command string, args ...string) *exec.Cmd) {
+	execCommand = f
 }
-func SwitchExecCommandContext( f func(ctx context.Context, command string, args ...string) *exec.Cmd  ) {
-    execCommandContext = f
+func SwitchExecCommandContext(f func(ctx context.Context, command string, args ...string) *exec.Cmd) {
+	execCommandContext = f
 }
 
 // Jobber defines a job interface.
