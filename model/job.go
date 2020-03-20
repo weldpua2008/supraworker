@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-    "os"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -37,11 +37,11 @@ const (
 // - Successfull
 func IsTerminalStatus(status string) bool {
 	switch status {
-    case JOB_STATUS_ERROR,JOB_STATUS_CANCELED,JOB_STATUS_SUCCESS:
-            log.Tracef("IsTerminalStatus %s true",status)
-		    return true
+	case JOB_STATUS_ERROR, JOB_STATUS_CANCELED, JOB_STATUS_SUCCESS:
+		log.Tracef("IsTerminalStatus %s true", status)
+		return true
 	}
-    log.Tracef("IsTerminalStatus %s false",status)
+	log.Tracef("IsTerminalStatus %s false", status)
 	return false
 }
 
@@ -88,9 +88,9 @@ func (j *Job) Cancel() error {
 		defer j.mu.Unlock()
 		j.updateStatus(JOB_STATUS_CANCELED)
 		j.updatelastActivity()
-	}else {
-        log.Trace(fmt.Sprintf("Job %s in terminal '%s' status ", j.Id, j.Status))
-    }
+	} else {
+		log.Trace(fmt.Sprintf("Job %s in terminal '%s' status ", j.Id, j.Status))
+	}
 	return nil
 }
 
@@ -239,13 +239,13 @@ func (j *Job) Run() error {
 	defer j.mu.Unlock()
 	j.exitError = err
 	j.updatelastActivity()
-    if !IsTerminalStatus(j.Status) {
-        	if err == nil {
-    		j.updateStatus(JOB_STATUS_SUCCESS)
-    	} else {
-    		j.updateStatus(JOB_STATUS_ERROR)
-    	}
-    }
+	if !IsTerminalStatus(j.Status) {
+		if err == nil {
+			j.updateStatus(JOB_STATUS_SUCCESS)
+		} else {
+			j.updateStatus(JOB_STATUS_ERROR)
+		}
+	}
 	return err
 }
 
