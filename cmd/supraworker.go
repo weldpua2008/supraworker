@@ -57,7 +57,7 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel() // cancel when we are getting the kill signal or exit
 		var wg sync.WaitGroup
-		jobs := make(chan model.Job, 1)
+		jobs := make(chan *model.Job, 1)
 
 		go func() {
 			sig := <-sigs

@@ -17,7 +17,7 @@ var (
 // StartWorker run gorutine for executing commands and reporting to your API
 // Note that a WaitGroup must be passed to functions by
 // pointer.
-func StartWorker(id int, jobs <-chan model.Job, wg *sync.WaitGroup) {
+func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	// On return, notify the WaitGroup that we're done.
 	defer func() {
 		wg.Done()
@@ -26,7 +26,7 @@ func StartWorker(id int, jobs <-chan model.Job, wg *sync.WaitGroup) {
 
 	log.Info(fmt.Sprintf("Starting worker %v", id))
 	for j := range jobs {
-		log.Trace(fmt.Sprintf("Worker %v received Job %v ", id, j.Id))
+		log.Trace(fmt.Sprintf("Worker %v received Job %v adress %p", id, j.Id, &j))
 		if err := j.Run(); err != nil {
 			log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
 			j.Failed()

@@ -16,7 +16,7 @@ var (
 
 // StartGenerateJobs gorutine for getting jobs from API with internal
 // exists on kill
-func StartGenerateJobs(jobs chan model.Job, ctx context.Context, interval time.Duration) {
+func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.Duration) {
 	localdone := make(chan int, 1)
 	localCancelDone := make(chan int, 1)
 	log.Info(fmt.Sprintf("Starting generate jobs with delay %v seconds", interval))
@@ -52,7 +52,7 @@ func StartGenerateJobs(jobs chan model.Job, ctx context.Context, interval time.D
 				job.SetContext(ctx)
 				job.TTR = 10000000
 				JobsRegistry.Add(job)
-				jobs <- *job
+				jobs <- job
 				log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
 				// time.Sleep(500 *time.Millisecond)
 				// time.Sleep(interval)
@@ -106,7 +106,7 @@ func StartGenerateJobs(jobs chan model.Job, ctx context.Context, interval time.D
 
 // GracefullShutdown cancel all running jobs
 // returns error in case any job failed to cancel
-func GracefullShutdown(jobs <-chan model.Job) bool {
+func GracefullShutdown(jobs <-chan *model.Job) bool {
 	JobsRegistry.GracefullShutdown()
 	if JobsRegistry.Len() > 0 {
 		return false
