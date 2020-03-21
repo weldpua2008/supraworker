@@ -17,10 +17,14 @@ var (
 // StartGenerateJobs gorutine for getting jobs from API with internal
 // exists on kill
 func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.Duration) {
-	localdone := make(chan int, 1)
-	localCancelDone := make(chan int, 1)
+	doneNumJobs := make(chan int, 1)
+	doneNumCancelJobs := make(chan int, 1)
 	log.Info(fmt.Sprintf("Starting generate jobs with delay %v seconds", interval))
-	ticker := time.NewTicker(10 * time.Second)
+	tickerCancelJobs := time.NewTicker(10 * time.Second)
+    defer tickerCancelJobs.Stop()
+
+    tickerGenerateJobs := time.NewTicker(interval)
+    defer tickerGenerateJobs.Stop()
 
 	go func() {
 		j := 0
@@ -35,20 +39,17 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 						<-jobs
 					}
 				}
-				localdone <- j
+				doneNumJobs <- j
 				if GracefullShutdown(jobs) {
-					log.Info("Finished")
+					log.Debug("Jobs generation finished [ SUCESSFULLY ]")
 				} else {
-					log.Info("Failed to shutdown jobs")
+					log.Warn("Jobs generation finished [ FAILED ]")
 				}
 
 				return
-			default:
+			case <-tickerGenerateJobs.C:
 				// example Job
 				job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("echo %v && date&&sleep 5 && echo $(date);exit1", j))
-				// ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-				// defer cancel()
-				// job.SetContext(&ctx)
 				job.SetContext(ctx)
 				job.TTR = 10000000
 				JobsRegistry.Add(job)
@@ -57,7 +58,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 				// time.Sleep(500 *time.Millisecond)
 				// time.Sleep(interval)
 				j += 1
-				// localdone <- j
+				// doneNumJobs <- j
 				// return
 				// log.Info(JobsRegistry.Len())
 
@@ -76,9 +77,11 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 		for {
 			select {
 			case <-ctx.Done():
-				localCancelDone <- j
+				doneNumCancelJobs <- j
+                log.Debug("Jobs cancelation finished [ SUCESSFULLY ]")
+
 				return
-			case <-ticker.C:
+			case <-tickerCancelJobs.C:
 
 				n := JobsRegistry.Cleanup()
 				if n > 0 {
@@ -90,15 +93,14 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 		}
 	}()
 
-	n := <-localdone
-	n1 := <-localCancelDone
-	defer ticker.Stop()
+	numSentJobs := <-doneNumJobs
+	numCancelJobs := <-doneNumCancelJobs
 
 	// log.Debug(fmt.Sprintf("Cannel jobs has size %s", len(jobs)))
-	time.Sleep(50 * time.Millisecond)
-	log.Info(fmt.Sprintf("Sent %v jobs", n))
-	if n1 > 0 {
-		log.Info(fmt.Sprintf("Canceled %v jobs", n1))
+	// time.Sleep(50 * time.Millisecond)
+	log.Info(fmt.Sprintf("Sent %v jobs", numSentJobs))
+	if numCancelJobs > 0 {
+		log.Info(fmt.Sprintf("Canceled %v jobs", numCancelJobs))
 
 	}
 
@@ -109,6 +111,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 func GracefullShutdown(jobs <-chan *model.Job) bool {
 	JobsRegistry.GracefullShutdown()
 	if JobsRegistry.Len() > 0 {
+        log.Trace(fmt.Sprintf("GracefullShutdown failed, '%v' jobs left ", JobsRegistry.Len()))
 		return false
 	}
 	return true

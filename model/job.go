@@ -123,7 +123,7 @@ func (j *Job) Failed() error {
 	return nil
 }
 
-// Cancel job
+// SendLogStream for job
 // update your API
 func (j *Job) SendLogStream(logStream []string) error {
 	for _, oneStream := range logStream {
@@ -269,7 +269,7 @@ func (j *Job) runcmd() error {
         }
     }
     if err == nil && j.Status == JOB_STATUS_CANCELED {
-        err =  fmt.Errorf("return erro for Canceled Job")
+        err =  fmt.Errorf("return error for Canceled Job")
     }
 
 
