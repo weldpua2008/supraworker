@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+    "syscall"
 )
 
 var osGetEnv = os.Getenv
@@ -67,6 +68,7 @@ type Job struct {
 	StreamInterval time.Duration
 	mu             sync.RWMutex
 	exitError      error
+    ExitCode        int
 	cmd            *exec.Cmd
 	ctx            context.Context
 }
@@ -86,13 +88,14 @@ func (j *Job) updateStatus(status string) error {
 func (j *Job) Cancel() error {
 	if !IsTerminalStatus(j.Status) {
 		log.Trace(fmt.Sprintf("Call Canceled for Job %s", j.Id))
+        j.mu.Lock()
+		defer j.mu.Unlock()
 		if j.cmd != nil && j.cmd.Process != nil {
 			if err := j.cmd.Process.Kill(); err != nil {
 				return fmt.Errorf("failed to kill process: %s", err)
 			}
 		}
-		j.mu.Lock()
-		defer j.mu.Unlock()
+
 		j.updateStatus(JOB_STATUS_CANCELED)
 		j.updatelastActivity()
 	} else {
@@ -229,8 +232,59 @@ func (j *Job) runcmd() error {
 	// if err = cmd.Wait(); err != nil {
 	// 	log.Info(fmt.Errorf("cmd.Wait, %s",err))
 	// }
+
+    // The returned error is nil if the command runs, has
+    // no problems copying stdin, stdout, and stderr,
+    // and exits with a zero exit status.
+    <-logSent
 	err = j.cmd.Wait()
-	<-logSent
+    if err != nil {
+        log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
+    }
+
+    status := j.cmd.ProcessState.Sys()
+    ws, ok := status.(syscall.WaitStatus)
+    if !ok {
+		err = fmt.Errorf("process state Sys() was a %T; want a syscall.WaitStatus", status)
+        j.exitError = err
+	}
+    exitCode := ws.ExitStatus()
+    j.ExitCode = exitCode
+	if exitCode < 0 {
+		err = fmt.Errorf("invalid negative exit status %d", exitCode)
+        j.exitError = err
+	}
+    if exitCode != 0 {
+		err = fmt.Errorf("exit code '%d'", exitCode)
+        j.exitError = err
+	}
+    if err == nil {
+        signaled := ws.Signaled()
+        signal := ws.Signal()
+        log.Tracef("Error: %v", err)
+        if signaled {
+            log.Tracef("Signal: %v", signal)
+            err =  fmt.Errorf("Signal: %v", signal)
+            j.exitError = err
+        }
+    }
+    if err == nil && j.Status == JOB_STATUS_CANCELED {
+        err =  fmt.Errorf("return erro for Canceled Job")
+    }
+
+
+
+
+    // status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
+    // exitStatus := status.ExitStatus()
+    // signaled := status.Signaled()
+    // signal := status.Signal()
+    // log.Tracef("Error: %v", err)
+    // if signaled {
+    //     log.Tracef("Signal: %v", signal)
+    // } else {
+    //     log.Tracef("Status: %v", exitStatus)
+    // }
 	return err
 }
 

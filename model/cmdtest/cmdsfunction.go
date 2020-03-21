@@ -67,6 +67,7 @@ func TestHelperProcess(t *testing.T) {
 	// some code here to check arguments perhaps?
 	switch {
 	case strings.Contains(strings.Join(args, " "), "sleep "):
+        // fmt.Fprintf(os.Stdout, "Sleep for 10 seconds")
 		time.Sleep(10 * time.Second)
 	}
 	res := re.FindStringSubmatch(strings.Join(args, " "))

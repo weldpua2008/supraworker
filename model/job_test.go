@@ -72,21 +72,28 @@ func TestExecuteJobCancel(t *testing.T) {
 	defer func() {
 		execCommand = exec.Command
 		execCommandContext = exec.CommandContext
-		// logrus.SetLevel(logrus.InfoLevel)
 	}()
 	done := make(chan bool, 1)
-	// logrus.SetLevel(logrus.TraceLevel)
+    started := make(chan bool, 1)
 
+	// startTrace()
+    // defer restoreLevel()
 	job := NewJob(fmt.Sprintf("job-TestExecuteJobCancel"), fmt.Sprintf("echo v && sleep 100 && exit 0"))
 	go func() {
 		job.TTR = 10000000
+        started <- true
 		err := job.Run()
 		if err == nil {
-			t.Errorf("Expected  error, got %v", err)
+
+			t.Errorf("Expected  error for job %v\n, got %v",job, err)
 		}
 		defer func() { done <- true }()
 	}()
-	time.Sleep(500 * time.Millisecond)
+    <-started
+    if job.Status != JOB_STATUS_IN_PROGRESS {
+            // t.Errorf("job.Status %v",job.Status)
+	       time.Sleep(100 * time.Millisecond)
+    }
 	job.Cancel()
 	<-done
 	if job.Status != JOB_STATUS_CANCELED {
