@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func BenchmarkRegistryAdd(b *testing.B) {
@@ -71,6 +72,34 @@ func TestRegistryDelete(t *testing.T) {
 		}
 		if r.Delete(job.Id) {
 			t.Errorf("Expect the job to be already deleted")
+		}
+
+	}
+	if r.Len() != 0 {
+		t.Errorf("Expect %v got length %v", num, r.Len())
+	}
+}
+
+func TestRegistryCleanup(t *testing.T) {
+	r := NewRegistry()
+	num := 100
+	for ii := 0; ii < num; ii++ {
+		job := NewJob(fmt.Sprintf("job-%v", ii), fmt.Sprintf("echo"))
+		job.TTR = 10000
+		// no cancelation flow on cleanup
+		// right now it won't execute something
+		job.Status = JOB_STATUS_CANCELED
+
+		if !r.Add(job) {
+			t.Errorf("Expect to add job")
+		}
+		n := r.Len()
+		if (r.Cleanup() > 0) || (r.Len() != n) {
+			t.Errorf("Expect no job to be already deleted by Cleanup")
+		}
+		job.StartAt = time.Now().Add(time.Duration(-10001) * time.Millisecond)
+		if (r.Cleanup() == 0) || (r.Len() == n) {
+			t.Errorf("Expect Job to be deleted by Cleanup due to TTR")
 		}
 
 	}

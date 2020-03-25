@@ -2,19 +2,28 @@ package model
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
-    "syscall"
 )
 
 var osGetEnv = os.Getenv
 var execCommand = exec.Command
 var execCommandContext = exec.CommandContext
+
+// var StreamingAPIURL string
+var StreamingAPIURL string
+var StreamingAPIMethod = "POST"
 
 func SwitchExecCommand(f func(command string, args ...string) *exec.Cmd) {
 	execCommand = f
@@ -62,15 +71,22 @@ type Job struct {
 	Status         string
 	MaxAttempts    int    // Absoulute max num of attempts.
 	MaxFails       int    // Absolute max number of failures.
-	TTL            uint64 // max time to live in Millisecond
-	TTR            uint64 // Time-to-run in seconds
+	TTR            uint64 // Time-to-run in Millisecond
 	CMD            string // Comamand
 	StreamInterval time.Duration
 	mu             sync.RWMutex
 	exitError      error
-    ExitCode        int
+	ExitCode       int
 	cmd            *exec.Cmd
 	ctx            context.Context
+	// steram interface
+	elements          uint
+	notify            chan interface{}
+	notifyStopStreams chan interface{}
+	stremMu           sync.Mutex
+	counter           uint
+	timeQuote         bool
+	streamsBuf        []string
 }
 
 func (j *Job) updatelastActivity() {
@@ -88,7 +104,7 @@ func (j *Job) updateStatus(status string) error {
 func (j *Job) Cancel() error {
 	if !IsTerminalStatus(j.Status) {
 		log.Trace(fmt.Sprintf("Call Canceled for Job %s", j.Id))
-        j.mu.Lock()
+		j.mu.Lock()
 		defer j.mu.Unlock()
 		if j.cmd != nil && j.cmd.Process != nil {
 			if err := j.cmd.Process.Kill(); err != nil {
@@ -123,33 +139,148 @@ func (j *Job) Failed() error {
 	return nil
 }
 
-// SendLogStream for job
+// AppendLogStream for job
 // update your API
-func (j *Job) SendLogStream(logStream []string) error {
-	for _, oneStream := range logStream {
-		fmt.Printf("%s", oneStream)
+func (j *Job) AppendLogStream(logStream []string) error {
+	if j.quotaHit() {
+		<-j.notify
+		j.doSendSteamBuf()
 	}
+	j.incrementCounter()
+	j.stremMu.Lock()
+	j.streamsBuf = append(j.streamsBuf, logStream...)
+	j.stremMu.Unlock()
 	return nil
+}
 
+//count next element
+func (j *Job) incrementCounter() {
+	j.stremMu.Lock()
+	defer j.stremMu.Unlock()
+	j.counter++
+}
+
+func (j *Job) quotaHit() bool {
+	return (j.counter >= j.elements) || (len(j.streamsBuf) > int(j.elements)) || (j.timeQuote)
+}
+
+//scheduled elements counter refresher
+func (j *Job) resetCounterLoop(after time.Duration) {
+	ticker := time.NewTicker(after)
+	tickerTimeInterval := time.NewTicker(2 * after)
+	for {
+		select {
+		case <-j.notifyStopStreams:
+			j.doSendSteamBuf()
+			log.Tracef("resetCounterLoop finished for '%v'", j.Id)
+			return
+		case <-ticker.C:
+
+			j.stremMu.Lock()
+			if j.quotaHit() {
+				// log.Tracef("doNotify for '%v'", j.Id)
+				j.timeQuote = false
+				j.doNotify()
+
+			}
+			j.counter = 0
+			j.stremMu.Unlock()
+		case <-tickerTimeInterval.C:
+
+			j.stremMu.Lock()
+			j.timeQuote = true
+			j.stremMu.Unlock()
+		}
+	}
+}
+
+func (j *Job) doNotify() {
+	select {
+	case j.notify <- struct{}{}:
+	default:
+	}
+}
+
+func (j *Job) doSendSteamBuf() {
+	log.Tracef("doSendSteamBuf for '%v' len %v", j.Id, len(j.streamsBuf))
+	sendSucessfully := true
+	if len(j.streamsBuf) > 0 {
+		j.stremMu.Lock()
+		defer j.stremMu.Unlock()
+		// for _, oneStream := range j.streamsBuf {
+		// 	fmt.Printf("%s", oneStream)
+		// }
+		streamsReader := strings.NewReader(strings.Join(j.streamsBuf, ""))
+		if len(StreamingAPIURL) > 0 {
+			c := struct {
+				Job_uid      string `json:"job_uid"`
+				Run_uid      string `json:"run_uid"`
+				Extra_run_id string `json:"extra_run_id"`
+				Msg          string `json:"msg"`
+			}{
+				Job_uid:      j.Id,
+				Run_uid:      "1",
+				Extra_run_id: "1",
+				Msg:          strings.Join(j.streamsBuf, ""),
+			}
+
+			jsonStr, err := json.Marshal(&c)
+			if err != nil {
+				log.Tracef("Failed to marshal for '%v' due %s", j.Id, err)
+			}
+			log.Tracef(string(jsonStr))
+			req, err := http.NewRequest(StreamingAPIMethod,
+				StreamingAPIURL,
+				bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+
+			if err != nil {
+				log.Tracef("Failed to prepare request '%v' due %s", j.Id, err)
+				sendSucessfully = false
+			}
+			log.Trace(fmt.Sprintf("New Streaming request %s  to %s from %s", StreamingAPIMethod, StreamingAPIURL, j.Id))
+
+			// req.Header.Set("X-Custom-Header", "myvalue")
+			// req.Header.Set("Content-Type", "application/json")
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Tracef("Failed to sendfor '%v' len %v due %s", j.Id, len(j.streamsBuf), err)
+				sendSucessfully = false
+			}
+			defer resp.Body.Close()
+			log.Tracef("Response for '%s'", j.Id)
+			body, _ := ioutil.ReadAll(resp.Body)
+			log.Tracef("Response for '%v' %s", j.Id, body)
+
+		} else {
+			var buf bytes.Buffer
+			buf.ReadFrom(streamsReader)
+			fmt.Println(buf.String())
+		}
+		if sendSucessfully {
+			j.streamsBuf = nil
+		}
+
+	}
 }
 
 // runcmd executes command
 func (j *Job) runcmd() error {
+	var ctx context.Context
+	var cancel context.CancelFunc
 	// in case we have time limitation or context
-	if (j.TTR > 0) || (j.ctx != nil) {
-		var ctx context.Context
-		var cancel context.CancelFunc
-		if j.ctx != nil {
-			ctx, cancel = context.WithTimeout(j.ctx, time.Duration(j.TTR)*time.Millisecond)
-
-		} else {
-			ctx, cancel = context.WithTimeout(context.Background(), time.Duration(j.TTR)*time.Millisecond)
-		}
-		defer cancel()
-		j.cmd = execCommandContext(ctx, "bash", "-c", j.CMD)
+	if (j.TTR > 0) && (j.ctx != nil) {
+		ctx, cancel = context.WithTimeout(j.ctx, time.Duration(j.TTR)*time.Millisecond)
+	} else if (j.TTR > 0) && (j.ctx == nil) {
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(j.TTR)*time.Millisecond)
+	} else if j.ctx != nil {
+		ctx, cancel = context.WithCancel(j.ctx)
 	} else {
-		j.cmd = execCommand("bash", "-c", j.CMD)
+		ctx, cancel = context.WithCancel(context.Background())
 	}
+	defer cancel()
+	j.cmd = execCommandContext(ctx, "bash", "-c", j.CMD)
 
 	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
 	stdout, err := j.cmd.StdoutPipe()
@@ -165,126 +296,81 @@ func (j *Job) runcmd() error {
 	if err != nil {
 		return fmt.Errorf("cmd.Start, %s", err)
 	}
-	jobs := make(chan string)
-	done := make(chan bool)
-	logSent := make(chan bool)
-	// parse stdout & stderr
-	go func() {
-		merged := io.MultiReader(stderr, stdout)
-		scanner := bufio.NewScanner(merged)
-		defer func() {
-			done <- true
-			logSent <- true
-		}()
+	notifyStdoutSent := make(chan bool)
+	notifyStderrSent := make(chan bool)
 
-		for scanner.Scan() {
-			msg := scanner.Text()
-			jobs <- fmt.Sprintf("%s\n", msg)
-		}
+	// reset backpresure counter
+	per := 5 * time.Second
+	go j.resetCounterLoop(per)
 
-	}()
-
+	// parse stdout
 	// send logs to streaming API
 	go func() {
-		var logsCache []string
-
-		ticker := time.NewTicker(j.StreamInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case msg := <-jobs:
-				logsCache = append(logsCache, msg)
-				if len(logsCache) > 10 {
-					j.SendLogStream(logsCache)
-					logsCache = nil
-				}
-			case <-done:
-				// TODO: catch error
-				j.SendLogStream(logsCache)
-				return
-			case <-ticker.C:
-				if len(logsCache) > 0 {
-					// TODO: catch error
-					j.SendLogStream(logsCache)
-					logsCache = nil
-				}
-			}
+		defer func() {
+			notifyStdoutSent <- true
+		}()
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			msg := scanner.Text()
+			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
-
 	}()
-	//
-	//
-	// buf := bufio.NewReader(stdout) // Notice that this is not in a loop
-	// num := 1
-	// for {
-	// 	// line, _, _ := buf.ReadLine()
-	//     line, err := buf.ReadString('\n')
-	//     if err == io.EOF {
-	//         break
-	//     }
-	//     if err != nil && err != io.EOF {
-	//           return err
-	//     }
-	//
-	// 	num += 1
-	// 	fmt.Println(string(line))
-	// }
-	// if err = cmd.Wait(); err != nil {
-	// 	log.Info(fmt.Errorf("cmd.Wait, %s",err))
-	// }
+	// parse stderr
+	// send logs to streaming API
+	go func() {
+		defer func() {
+			notifyStderrSent <- true
+		}()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			msg := scanner.Text()
+			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
+		}
+	}()
 
-    // The returned error is nil if the command runs, has
-    // no problems copying stdin, stdout, and stderr,
-    // and exits with a zero exit status.
-    <-logSent
+	// The returned error is nil if the command runs, has
+	// no problems copying stdin, stdout, and stderr,
+	// and exits with a zero exit status.
 	err = j.cmd.Wait()
-    if err != nil {
-        log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
-    }
-
-    status := j.cmd.ProcessState.Sys()
-    ws, ok := status.(syscall.WaitStatus)
-    if !ok {
-		err = fmt.Errorf("process state Sys() was a %T; want a syscall.WaitStatus", status)
-        j.exitError = err
+	if err != nil {
+		log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
 	}
-    exitCode := ws.ExitStatus()
-    j.ExitCode = exitCode
+
+	<-notifyStdoutSent
+	<-notifyStderrSent
+	// signal that we've read all logs
+	j.notifyStopStreams <- struct{}{}
+
+	status := j.cmd.ProcessState.Sys()
+	ws, ok := status.(syscall.WaitStatus)
+	if !ok {
+		err = fmt.Errorf("process state Sys() was a %T; want a syscall.WaitStatus", status)
+		j.exitError = err
+	}
+	exitCode := ws.ExitStatus()
+	j.ExitCode = exitCode
 	if exitCode < 0 {
 		err = fmt.Errorf("invalid negative exit status %d", exitCode)
-        j.exitError = err
+		j.exitError = err
 	}
-    if exitCode != 0 {
+	if exitCode != 0 {
 		err = fmt.Errorf("exit code '%d'", exitCode)
-        j.exitError = err
+		j.exitError = err
 	}
-    if err == nil {
-        signaled := ws.Signaled()
-        signal := ws.Signal()
-        log.Tracef("Error: %v", err)
-        if signaled {
-            log.Tracef("Signal: %v", signal)
-            err =  fmt.Errorf("Signal: %v", signal)
-            j.exitError = err
-        }
-    }
-    if err == nil && j.Status == JOB_STATUS_CANCELED {
-        err =  fmt.Errorf("return error for Canceled Job")
-    }
-
-
-
-
-    // status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
-    // exitStatus := status.ExitStatus()
-    // signaled := status.Signaled()
-    // signal := status.Signal()
-    // log.Tracef("Error: %v", err)
-    // if signaled {
-    //     log.Tracef("Signal: %v", signal)
-    // } else {
-    //     log.Tracef("Status: %v", exitStatus)
-    // }
+	if err == nil {
+		signaled := ws.Signaled()
+		signal := ws.Signal()
+		log.Tracef("Error: %v", err)
+		if signaled {
+			log.Tracef("Signal: %v", signal)
+			err = fmt.Errorf("Signal: %v", signal)
+			j.exitError = err
+		}
+	}
+	if err == nil && j.Status == JOB_STATUS_CANCELED {
+		err = fmt.Errorf("return error for Canceled Job")
+	}
+	log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
 	return err
 }
 
@@ -330,15 +416,19 @@ func (j *Job) SetContext(ctx context.Context) {
 
 func NewJob(id string, cmd string) *Job {
 	return &Job{
-		Id:             id,
-		CreateAt:       time.Now(),
-		StartAt:        time.Now(),
-		LastActivityAt: time.Now(),
-		Status:         JOB_STATUS_PENDING,
-		MaxFails:       1,
-		MaxAttempts:    1,
-		CMD:            cmd,
-		TTL:            1,
-		StreamInterval: time.Duration(5) * time.Second,
+		Id:                id,
+		CreateAt:          time.Now(),
+		StartAt:           time.Now(),
+		LastActivityAt:    time.Now(),
+		Status:            JOB_STATUS_PENDING,
+		MaxFails:          1,
+		MaxAttempts:       1,
+		CMD:               cmd,
+		TTR:               0,
+		notify:            make(chan interface{}),
+		notifyStopStreams: make(chan interface{}),
+		counter:           0,
+		elements:          100,
+		StreamInterval:    time.Duration(5) * time.Second,
 	}
 }

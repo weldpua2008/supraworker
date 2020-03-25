@@ -14,6 +14,7 @@ import (
 	model "github.com/weldpua2008/supraworker/model"
 	worker "github.com/weldpua2008/supraworker/worker"
 	"html/template"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -22,6 +23,7 @@ import (
 
 var (
 	verbose    bool
+	traceFlag  bool
 	log            = logrus.WithFields(logrus.Fields{"package": "cmd"})
 	numWorkers int = 5
 )
@@ -33,8 +35,10 @@ func init() {
 	// logrus.SetFormatter(&logrus.JSONFormatter{})
 
 	// logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, FullTimestamp: true, TimestampFormat: "2020-03-12 15:00:05"})
+	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, FullTimestamp: true})
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
+	rootCmd.PersistentFlags().BoolVarP(&traceFlag, "trace", "t", false, "trace")
+
 	rootCmd.PersistentFlags().IntVarP(&numWorkers, "workers", "w", 5, "Number of workers")
 	// Only log the warning severity or above.
 	// logrus.SetLevel(logrus.InfoLevel)
@@ -69,6 +73,9 @@ var rootCmd = &cobra.Command{
 		if verbose {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
+		if traceFlag {
+			logrus.SetLevel(logrus.TraceLevel)
+		}
 		log.Trace("Config file:", viper.ConfigFileUsed())
 
 		log.Debug(viper.GetString("jobs.get.url"))
@@ -79,6 +86,22 @@ var rootCmd = &cobra.Command{
 		delay := int64(viper.GetInt("api_delay_sec"))
 		if delay < 1 {
 			delay = 1
+		}
+		model.StreamingAPIURL = viper.GetString("logs.update.url")
+		model.StreamingAPIMethod = viper.GetString("logs.update.method")
+		switch model.StreamingAPIMethod {
+		case http.MethodGet:
+		case http.MethodHead:
+		case http.MethodPost:
+		case http.MethodPut:
+		case http.MethodPatch:
+		case http.MethodDelete:
+		case http.MethodConnect:
+		case http.MethodOptions:
+		case http.MethodTrace:
+
+		default:
+			model.StreamingAPIMethod = http.MethodPost
 		}
 
 		api_delay_sec := time.Duration(delay) * time.Second
@@ -99,14 +122,7 @@ var rootCmd = &cobra.Command{
 			go worker.StartWorker(w, jobs, &wg)
 		}
 
-		// fmt.Println(t)
-		// fmt.Println("---")
-		// fmt.Println(config.C)
-		// fmt.Println("Done")
-		// Block until the WaitGroup counter goes back to 0;
-		// all the workers notified they're done.
 		wg.Wait()
-
 		time.Sleep(150 * time.Millisecond)
 
 	},

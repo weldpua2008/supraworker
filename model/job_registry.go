@@ -55,20 +55,21 @@ func (r *Registry) Delete(id string) bool {
 	return true
 }
 
-// Cleanup by job TTL.
+// Cleanup by job TTR.
 // Return number of cleaned jobs.
+// TODO: Consider new timeout status & flow
 func (r *Registry) Cleanup() (num int) {
 	now := time.Now()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for k, v := range r.all {
-		end := v.StartAt.Add(time.Duration(v.TTL) * time.Second)
-		if (end.Before(now.Add(-7 * 24 * time.Hour))) || (end.After(now)) {
+		end := v.StartAt.Add(time.Duration(v.TTR) * time.Millisecond)
+		if (v.TTR > 0) && (now.After(end)) {
 			if !IsTerminalStatus(v.Status) {
 				if err := v.Cancel(); err != nil {
-					log.Debug(fmt.Sprintf("failed cancel job %s %v", v.Id, err))
+					log.Debug(fmt.Sprintf("failed cancel job %s %v StartAt %v", v.Id, err, v.StartAt))
 				} else {
-					log.Debug(fmt.Sprintf("sucessfully canceled job %s", v.Id))
+					log.Debug(fmt.Sprintf("sucessfully canceled job %s StartAt %v, TTR %v msec", v.Id, v.StartAt, v.TTR))
 				}
 			}
 			delete(r.all, k)

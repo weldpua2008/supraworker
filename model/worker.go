@@ -8,31 +8,32 @@ import (
 )
 
 var (
-	log = logrus.WithFields(logrus.Fields{"package": "model"})
-    previousLevel logrus.Level
+	log           = logrus.WithFields(logrus.Fields{"package": "model"})
+	previousLevel logrus.Level
 )
 
-func init(){
-    previousLevel = logrus.GetLevel()
+func init() {
+	previousLevel = logrus.GetLevel()
 }
 
 // startTrace logs
 // works like this in tests:
 // startTrace()
 // defer restoreLevel()
-func startTrace(){
-    l := logrus.GetLevel()
-    if l != logrus.TraceLevel {
-        previousLevel = l
-    }
-    logrus.SetLevel(logrus.TraceLevel)
+func startTrace() {
+	l := logrus.GetLevel()
+	if l != logrus.TraceLevel {
+		previousLevel = l
+	}
+	logrus.SetLevel(logrus.TraceLevel)
 
 }
 
 // restore default logLevel
-func restoreLevel(){
-    logrus.SetLevel(previousLevel)
+func restoreLevel() {
+	logrus.SetLevel(previousLevel)
 }
+
 // type Worker interface {
 // 	// Start the worker with the given context
 // 	Start(context.Context) error

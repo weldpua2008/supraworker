@@ -6,8 +6,8 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-    tmp := C
-    defer func() {
+	tmp := C
+	defer func() {
 		C = tmp
 	}()
 	C = Config{}
