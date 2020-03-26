@@ -69,10 +69,12 @@ type Job struct {
 	StartAt        time.Time
 	LastActivityAt time.Time
 	Status         string
-	MaxAttempts    int    // Absoulute max num of attempts.
-	MaxFails       int    // Absolute max number of failures.
-	TTR            uint64 // Time-to-run in Millisecond
-	CMD            string // Comamand
+	MaxAttempts    int      // Absoulute max num of attempts.
+	MaxFails       int      // Absolute max number of failures.
+	TTR            uint64   // Time-to-run in Millisecond
+	CMD            string   // Comamand
+	CmdENV         []string // Comamand
+
 	StreamInterval time.Duration
 	mu             sync.RWMutex
 	exitError      error
@@ -86,6 +88,7 @@ type Job struct {
 	stremMu           sync.Mutex
 	counter           uint
 	timeQuote         bool
+	UseSHELL          bool
 	streamsBuf        []string
 }
 
@@ -102,10 +105,10 @@ func (j *Job) updateStatus(status string) error {
 // Cancel job
 // update your API
 func (j *Job) Cancel() error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	if !IsTerminalStatus(j.Status) {
 		log.Trace(fmt.Sprintf("Call Canceled for Job %s", j.Id))
-		j.mu.Lock()
-		defer j.mu.Unlock()
 		if j.cmd != nil && j.cmd.Process != nil {
 			if err := j.cmd.Process.Kill(); err != nil {
 				return fmt.Errorf("failed to kill process: %s", err)
@@ -280,7 +283,29 @@ func (j *Job) runcmd() error {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
 	defer cancel()
-	j.cmd = execCommandContext(ctx, "bash", "-c", j.CMD)
+	// Use shell wrapper
+	j.mu.Lock()
+	if j.UseSHELL {
+		shell := "bash"
+		args := []string{"-c", j.CMD}
+		switch runtime.GOOS {
+		case "windows":
+			shell = "powershell.exe"
+			ps, err := exec.LookPath("powershell.exe")
+			if err != nil {
+				log.Tracef("Can't fetch powershell %s", err)
+				shell = ps
+			}
+			args = []string{"-NoProfile", "-NonInteractive", j.CMD}
+		}
+		j.cmd = execCommandContext(ctx, shell, args...)
+	} else {
+		j.cmd = execCommandContext(ctx, strings.Fields(j.CMD)[0], strings.Fields(j.CMD)[1:]...)
+	}
+	if len(j.CmdENV) > 0 {
+		j.cmd.Env = j.CmdENV
+	}
+	j.mu.Unlock()
 
 	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
 	stdout, err := j.cmd.StdoutPipe()
@@ -293,6 +318,9 @@ func (j *Job) runcmd() error {
 		return fmt.Errorf("cmd.StderrPipe, %s", err)
 	}
 	err = j.cmd.Start()
+	j.mu.Lock()
+	j.updateStatus(JOB_STATUS_IN_PROGRESS)
+	j.mu.Unlock()
 	if err != nil {
 		return fmt.Errorf("cmd.Start, %s", err)
 	}
@@ -377,10 +405,10 @@ func (j *Job) runcmd() error {
 // Run job
 // return error in case we have exit code greater then 0
 func (j *Job) Run() error {
-
+	j.mu.Lock()
 	j.StartAt = time.Now()
 	j.updatelastActivity()
-	j.updateStatus(JOB_STATUS_IN_PROGRESS)
+	j.mu.Unlock()
 	err := j.runcmd()
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -414,6 +442,7 @@ func (j *Job) SetContext(ctx context.Context) {
 	j.ctx = ctx
 }
 
+// NewJob return Job with defaults
 func NewJob(id string, cmd string) *Job {
 	return &Job{
 		Id:                id,
@@ -424,11 +453,20 @@ func NewJob(id string, cmd string) *Job {
 		MaxFails:          1,
 		MaxAttempts:       1,
 		CMD:               cmd,
+		CmdENV:            []string{},
 		TTR:               0,
 		notify:            make(chan interface{}),
 		notifyStopStreams: make(chan interface{}),
 		counter:           0,
 		elements:          100,
+		UseSHELL:          true,
 		StreamInterval:    time.Duration(5) * time.Second,
 	}
+}
+
+// NewTestJob return Job with defaults for test
+func NewTestJob(id string, cmd string) *Job {
+	j := NewJob(id, cmd)
+	j.CmdENV = []string{"GO_WANT_HELPER_PROCESS=1"}
+	return j
 }

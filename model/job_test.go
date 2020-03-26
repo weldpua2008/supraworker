@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"testing"
 	"time"
 )
@@ -29,6 +28,7 @@ func TestTerminalStatus(t *testing.T) {
 }
 
 func TestStreamApi(t *testing.T) {
+	startTrace()
 	want := "{\"job_uid\":\"job-testing.(*common).Name-fm\",\"run_uid\":\"1\",\"extra_run_id\":\"1\",\"msg\":\"'S'\\n\"}"
 	var got string
 	notifyStdoutSent := make(chan bool)
@@ -45,31 +45,23 @@ func TestStreamApi(t *testing.T) {
 		srv.Close()
 		StreamingAPIURL = ""
 		restoreLevel()
-		execCommand = exec.Command
-		execCommandContext = exec.CommandContext
-
 	}()
-	// startTrace()
 	StreamingAPIURL = srv.URL
 	log.Trace(fmt.Sprintf("StreamingAPIURL  %s", StreamingAPIURL))
 
-	execCommand = cmdtest.FakeExecCommand
-	execCommandContext = cmdtest.FakeExecCommandContext
-	job := NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo S&&exit 0"))
+	job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo S&&exit 0"))
 	job.StreamInterval = 1 * time.Millisecond
-
 	err := job.Run()
 	if err != nil {
 		t.Errorf("Expected no error in %s, got %v", cmdtest.GetFunctionName(t.Name), err)
 	}
 	select {
 	case <-notifyStdoutSent:
-
+		log.Trace("notifyStdoutSent")
 	case <-time.After(10 * time.Second):
 		t.Errorf("timed out")
 	}
 
-	// time.Sleep(100 * time.Millisecond)
 	if job.Status != JOB_STATUS_SUCCESS {
 		t.Errorf("Expected %s, got %s", JOB_STATUS_SUCCESS, job.Status)
 	}
@@ -80,15 +72,7 @@ func TestStreamApi(t *testing.T) {
 }
 
 func TestExecuteJobSuccess(t *testing.T) {
-	// Override exec.Command
-	execCommand = cmdtest.FakeExecCommand
-	execCommandContext = cmdtest.FakeExecCommandContext
-	defer func() {
-		execCommand = exec.Command
-		execCommandContext = exec.CommandContext
-	}()
-
-	job := NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo  &&exit 0"))
+	job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  &&exit 0"))
 	err := job.Run()
 
 	if err != nil {
@@ -100,15 +84,7 @@ func TestExecuteJobSuccess(t *testing.T) {
 }
 
 func TestExecuteJobError(t *testing.T) {
-	// Override exec.Command
-	execCommand = cmdtest.FakeExecCommand
-	execCommandContext = cmdtest.FakeExecCommandContext
-	defer func() {
-		execCommand = exec.Command
-		execCommandContext = exec.CommandContext
-	}()
-
-	job := NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo  &&exit 1"))
+	job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  &&exit 1"))
 	err := job.Run()
 
 	if err == nil {
@@ -120,34 +96,34 @@ func TestExecuteJobError(t *testing.T) {
 
 }
 func TestExecuteJobCancel(t *testing.T) {
-	// Override exec.Command
-	execCommand = cmdtest.FakeExecCommand
-	execCommandContext = cmdtest.FakeExecCommandContext
-	defer func() {
-		execCommand = exec.Command
-		execCommandContext = exec.CommandContext
-	}()
 	done := make(chan bool, 1)
 	started := make(chan bool, 1)
+	job := NewTestJob(fmt.Sprintf("job-TestExecuteJobCancel"), cmdtest.CMDForTest("echo v && sleep 100 && exit 0"))
+	job.TTR = 10000000
 
-	// startTrace()
-	// defer restoreLevel()
-	job := NewJob(fmt.Sprintf("job-TestExecuteJobCancel"), fmt.Sprintf("echo v && sleep 100 && exit 0"))
 	go func() {
-		job.TTR = 10000000
+
+		defer func() { done <- true }()
+		// log.Info("TestExecuteJobCancel")
 		started <- true
 		err := job.Run()
 		if err == nil {
-
+			done <- true
 			t.Errorf("Expected  error for job %v\n, got %v", job, err)
 		}
-		defer func() { done <- true }()
+		// log.Info(err)
+		// log.Info("TestExecuteJobCancel finished")
+
+		done <- true
 	}()
 	<-started
+	// time.Sleep(10 * time.Millisecond)
 	if job.Status != JOB_STATUS_IN_PROGRESS {
 		// t.Errorf("job.Status %v",job.Status)
 		time.Sleep(100 * time.Millisecond)
 	}
+	// time.Sleep(10 * time.Millisecond)
+
 	job.Cancel()
 	<-done
 	if job.Status != JOB_STATUS_CANCELED {
@@ -156,7 +132,7 @@ func TestExecuteJobCancel(t *testing.T) {
 }
 
 func TestJobFailed(t *testing.T) {
-	job := NewJob("echo", "echo")
+	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_ERROR {
 		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_ERROR)
 	}
@@ -170,7 +146,7 @@ func TestJobFailed(t *testing.T) {
 }
 
 func TestJobFinished(t *testing.T) {
-	job := NewJob("echo", "echo")
+	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_SUCCESS {
 		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_SUCCESS)
 	}
@@ -185,7 +161,7 @@ func TestJobFinished(t *testing.T) {
 }
 
 func TestJobCancel(t *testing.T) {
-	job := NewJob("echo", "echo")
+	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_CANCELED {
 		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_CANCELED)
 	}
@@ -199,7 +175,7 @@ func TestJobCancel(t *testing.T) {
 }
 
 func TestJobUpdateActivity(t *testing.T) {
-	job := NewJob("echo", "echo")
+	job := NewTestJob("echo", "echo")
 	got := job.LastActivityAt
 	job.updatelastActivity()
 	want := job.LastActivityAt
@@ -210,7 +186,7 @@ func TestJobUpdateActivity(t *testing.T) {
 }
 
 func TestJobUpdateStatus(t *testing.T) {
-	job := NewJob("echo", "echo")
+	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_SUCCESS {
 		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_PENDING)
 	}

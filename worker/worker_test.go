@@ -3,7 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
-	"os/exec"
+	// "os/exec"
 	"sync"
 	"testing"
 	"time"
@@ -21,22 +21,12 @@ func init() {
 }
 
 func TestExecuteJobSuccess(t *testing.T) {
-	// Override exec.Command
-	model.SwitchExecCommand(cmdtest.FakeExecCommand)
-	model.SwitchExecCommandContext(cmdtest.FakeExecCommandContext)
-	defer func() {
-		model.SwitchExecCommand(exec.Command)
-		model.SwitchExecCommandContext(exec.CommandContext)
-	}()
-
 	var wg sync.WaitGroup
 	jobs := make(chan *model.Job, 1)
 
 	wg.Add(1)
 	go StartWorker(0, jobs, &wg)
-
-	jobOne := model.NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo  &&exit 0"))
-	// jobOne.SetContext(ctx)
+	jobOne := model.NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  &&exit 0"))
 	jobOne.TTR = 10000000
 
 	jobs <- jobOne
@@ -48,22 +38,13 @@ func TestExecuteJobSuccess(t *testing.T) {
 }
 
 func TestExecuteJobFail(t *testing.T) {
-	// Override exec.Command
-	model.SwitchExecCommand(cmdtest.FakeExecCommand)
-	model.SwitchExecCommandContext(cmdtest.FakeExecCommandContext)
-	defer func() {
-		model.SwitchExecCommand(exec.Command)
-		model.SwitchExecCommandContext(exec.CommandContext)
-	}()
-
 	var wg sync.WaitGroup
 	jobs := make(chan *model.Job, 1)
 
 	wg.Add(1)
 	go StartWorker(0, jobs, &wg)
 
-	jobOne := model.NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo  &&exit 1"))
-	// jobOne.SetContext(ctx)
+	jobOne := model.NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  &&exit 1"))
 	jobOne.TTR = 10000000
 
 	jobs <- jobOne
@@ -75,14 +56,6 @@ func TestExecuteJobFail(t *testing.T) {
 }
 
 func TestExecuteJobContextCancel(t *testing.T) {
-	// Override exec.Command
-	model.SwitchExecCommand(cmdtest.FakeExecCommand)
-	model.SwitchExecCommandContext(cmdtest.FakeExecCommandContext)
-	defer func() {
-		model.SwitchExecCommand(exec.Command)
-		model.SwitchExecCommandContext(exec.CommandContext)
-	}()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel() // cancel when we are getting the kill signal or exit
 	time.Sleep(1 * time.Millisecond)
@@ -92,7 +65,7 @@ func TestExecuteJobContextCancel(t *testing.T) {
 	wg.Add(1)
 	go StartWorker(0, jobs, &wg)
 
-	jobOne := model.NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo  && sleep 100 &&exit 0"))
+	jobOne := model.NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  && sleep 100 &&exit 0"))
 	jobOne.SetContext(ctx)
 	jobOne.TTR = 10000000
 
@@ -105,21 +78,13 @@ func TestExecuteJobContextCancel(t *testing.T) {
 }
 
 func TestExecuteJobTTRCanceled(t *testing.T) {
-	// Override exec.Command
-	model.SwitchExecCommand(cmdtest.FakeExecCommand)
-	model.SwitchExecCommandContext(cmdtest.FakeExecCommandContext)
-	defer func() {
-		model.SwitchExecCommand(exec.Command)
-		model.SwitchExecCommandContext(exec.CommandContext)
-	}()
-
 	var wg sync.WaitGroup
 	jobs := make(chan *model.Job, 1)
 
 	wg.Add(1)
 	go StartWorker(0, jobs, &wg)
 
-	jobOne := model.NewJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), fmt.Sprintf("echo  && sleep 100 &&exit 0"))
+	jobOne := model.NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  && sleep 100 &&exit 0"))
 	jobOne.TTR = 1
 
 	jobs <- jobOne
