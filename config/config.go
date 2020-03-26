@@ -1,3 +1,9 @@
+// Copyright 2020 Valeriy Soloviov. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// license that can be found in the LICENSE file.
+
+// Package config provides configuration for `supraworker` application.
+
 package config
 
 import (
@@ -6,11 +12,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
+	"runtime"
 	"strings"
 )
 
-const ProjectName = "supraworker"
+const (
+	// Project name
+	ProjectName = "supraworker"
+)
 
+// top level Configuration structure
 type Config struct {
 	ClientId        string        `mapstructure:"clientId"`
 	JobsAPI         ApiOperations `mapstructure:"jobs"`
@@ -54,39 +65,36 @@ var (
 
 // Init configuration
 func init() {
-
-	// configCMD.PersistentFlags().StringVar(&CfgFile, "config", "", "config file (default is $HOME/supraworker.yaml)")
-	// viper.SetDefault("license", "apache")
-	// configCMD.PersistentFlags().Bool("viper", true, "use Viper for configuration")
-	// viper.Set("Verbose", true)
 	cobra.OnInitialize(initConfig)
-	// rootCmd.AddCommand(configCMD)
 
 }
 
-// var configCMD = &cobra.Command{
-// 	Use:   "config",
-// 	Run: func(command *cobra.Command, args []string) {
-//         log.Debug("viper config file:", viper.ConfigFileUsed())
-// 	},
-// }
-
+// initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	// Don't forget to read config either from CfgFile or from home directory!
-	// log.Info("logrus")
 	if CfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(CfgFile)
 	} else {
-
 		lProjectName := strings.ToLower(ProjectName)
 		log.Debug("Searching for config with project", ProjectName)
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("..")
-		viper.AddConfigPath("$HOME/")
-		viper.AddConfigPath(fmt.Sprintf("$HOME/.%s/", lProjectName))
-		viper.AddConfigPath("/etc/")
-		viper.AddConfigPath(fmt.Sprintf("/etc/%s/", lProjectName))
+		switch runtime.GOOS {
+		case "windows":
+			if userprofile := os.Getenv("USERPROFILE"); userprofile != "" {
+				viper.AddConfigPath(userprofile)
+			}
+		default:
+			// freebsd, openbsd, darwin, linux
+			// plan9, windows...
+			viper.AddConfigPath("$HOME/")
+			viper.AddConfigPath(fmt.Sprintf("$HOME/.%s/", lProjectName))
+			viper.AddConfigPath("/etc/")
+			viper.AddConfigPath(fmt.Sprintf("/etc/%s/", lProjectName))
+
+		}
+
 		if conf := os.Getenv(fmt.Sprintf("%s_CFG", strings.ToUpper(ProjectName))); conf != "" {
 			viper.SetConfigName(conf)
 		} else {
@@ -95,6 +103,7 @@ func initConfig() {
 		}
 	}
 	viper.AutomaticEnv()
+	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
 		logrus.Fatal("Can't read config:", err)
 	}

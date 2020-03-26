@@ -1,3 +1,8 @@
+// Copyright 2020 Valeriy Soloviov. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// license that can be found in the LICENSE file.
+
+// Package cmd provides CLI interfaces for the `supraworker` application.
 package cmd
 
 import (
@@ -30,21 +35,21 @@ var (
 
 func init() {
 
-	// Output to stdout instead of the default stderr
-	// Can be any io.Writer, see below for File example
-	// logrus.SetFormatter(&logrus.JSONFormatter{})
-
-	// logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, FullTimestamp: true})
+	// Define Persistent Flags and configuration settings, which, if defined here,
+	// will be global for application.
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
 	rootCmd.PersistentFlags().BoolVarP(&traceFlag, "trace", "t", false, "trace")
 
 	rootCmd.PersistentFlags().IntVarP(&numWorkers, "workers", "w", 5, "Number of workers")
+	// local flags, which will only run
+	// when this action is called directly.
+
+	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, FullTimestamp: true})
 	// Only log the warning severity or above.
-	// logrus.SetLevel(logrus.InfoLevel)
 	logrus.SetLevel(logrus.InfoLevel)
 }
 
+// This represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "supraworker",
 	Short: "Supraworker is abstraction layer around jobs",
@@ -128,8 +133,12 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func Execute() {
+// Execute adds all child commands to the root command sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+// return error
+func Execute() error {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

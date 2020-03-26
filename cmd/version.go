@@ -1,3 +1,8 @@
+// Copyright 2020 Valeriy Soloviov. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// license that can be found in the LICENSE file.
+
+// Version tools for Supraworker
 package cmd
 
 import (
@@ -14,12 +19,14 @@ func init() {
 // The git commit that was compiled. This will be filled in by the compiler.
 var GitCommit string
 
-// The main version number
-const Version = "0.1.1"
+const (
+	// The main version number
+	Version = "0.1.1"
 
-// A pre-release marker for the version
-// such as "dev" (in development), "beta", "rc1", etc.
-const VersionPrerelease = "dev"
+	// A pre-release marker for the version
+	// such as "dev" (in development), "beta", "rc1", etc.
+	VersionPrerelease = "dev"
+)
 
 // Return formatted version as string
 func FormattedVersion() string {
