@@ -10,6 +10,19 @@ It's responsible for getting the bash commands from your API running it, and str
 $ go get github.com/weldpua2008/supraworker
 ```
 
+### Running tests
+
+*  expires all test results
+
+```bash
+$ go clean -testcache
+```
+* run all tests
+
+```bash
+$ go test -bench= -test.v  ./...
+```
+
 ## Installing
 
 ### from binary

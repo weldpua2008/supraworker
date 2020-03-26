@@ -28,7 +28,6 @@ func TestTerminalStatus(t *testing.T) {
 }
 
 func TestStreamApi(t *testing.T) {
-	startTrace()
 	want := "{\"job_uid\":\"job-testing.(*common).Name-fm\",\"run_uid\":\"1\",\"extra_run_id\":\"1\",\"msg\":\"'S'\\n\"}"
 	var got string
 	notifyStdoutSent := make(chan bool)
@@ -51,6 +50,8 @@ func TestStreamApi(t *testing.T) {
 
 	job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo S&&exit 0"))
 	job.StreamInterval = 1 * time.Millisecond
+	job.ExtraRunUID = "1"
+	job.RunUID = "1"
 	err := job.Run()
 	if err != nil {
 		t.Errorf("Expected no error in %s, got %v", cmdtest.GetFunctionName(t.Name), err)

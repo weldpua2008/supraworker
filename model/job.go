@@ -17,20 +17,27 @@ import (
 	"time"
 )
 
-var osGetEnv = os.Getenv
-var execCommand = exec.Command
-var execCommandContext = exec.CommandContext
+var (
+	osGetEnv           = os.Getenv
+	execCommandContext = exec.CommandContext
 
-// var StreamingAPIURL string
-var StreamingAPIURL string
-var StreamingAPIMethod = "POST"
+	// URL for pulling new jobs
+	FetchNewJobAPIURL string
+	// Http METHOD for fetch Jobs API
+	FetchNewJobAPIMethod = "POST"
 
-func SwitchExecCommand(f func(command string, args ...string) *exec.Cmd) {
-	execCommand = f
-}
-func SwitchExecCommandContext(f func(ctx context.Context, command string, args ...string) *exec.Cmd) {
-	execCommandContext = f
-}
+	// URL for uploading log steams
+	StreamingAPIURL string
+	// Http METHOD for streaming log API
+	StreamingAPIMethod = "POST"
+)
+
+// func SwitchExecCommand(f func(command string, args ...string) *exec.Cmd) {
+// 	execCommand = f
+// }
+// func SwitchExecCommandContext(f func(ctx context.Context, command string, args ...string) *exec.Cmd) {
+// 	execCommandContext = f
+// }
 
 // Jobber defines a job interface.
 type Jobber interface {
@@ -40,12 +47,11 @@ type Jobber interface {
 }
 
 const (
-	JOB_STATUS_PENDING          = "pending"
-	JOB_STATUS_IN_PROGRESS      = "in_progress"
-	JOB_STATUS_SUCCESS          = "success"
-	JOB_STATUS_ERROR            = "error"
-	JOB_STATUS_CANCEL_REQUESTED = "cancel_requested"
-	JOB_STATUS_CANCELED         = "canceled"
+	JOB_STATUS_PENDING     = "pending"
+	JOB_STATUS_IN_PROGRESS = "in_progress"
+	JOB_STATUS_SUCCESS     = "success"
+	JOB_STATUS_ERROR       = "error"
+	JOB_STATUS_CANCELED    = "canceled"
 )
 
 // IsTerminalStatus returns true if status is terminal:
@@ -64,6 +70,8 @@ func IsTerminalStatus(status string) bool {
 
 type Job struct {
 	Id             string
+	RunUID         string
+	ExtraRunUID    string
 	Priority       int64
 	CreateAt       time.Time
 	StartAt        time.Time
@@ -222,8 +230,8 @@ func (j *Job) doSendSteamBuf() {
 				Msg          string `json:"msg"`
 			}{
 				Job_uid:      j.Id,
-				Run_uid:      "1",
-				Extra_run_id: "1",
+				Run_uid:      j.RunUID,
+				Extra_run_id: j.ExtraRunUID,
 				Msg:          strings.Join(j.streamsBuf, ""),
 			}
 
