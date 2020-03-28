@@ -20,10 +20,10 @@ Define config at `$HOME/supraworker.yaml`:
 
 
 ```yaml
-clientId: "j-30MUN2PTUHMAN"
+clientId: "my_uniq_client_id"
 logs:
   update:
-    url: "http://bo.wix.com/bi-supersonic-logger/api/v1/logs/run"
+    url: "http://localhost/streamlogger/api/v1/logs/upload"
     method: POST
 
 logs:
