@@ -10,6 +10,38 @@ It's responsible for getting the bash commands from your API running it, and str
 $ go get github.com/weldpua2008/supraworker
 ```
 
+Define config at `$HOME/supraworker.yaml`:
+
+>[!WARNING] Keys are not case sensitivity (https://github.com/spf13/viper/pull/635#issuecomment-580659676):
+> Viper's default behaviour of lowercasing the keys for key insensitivity is incompatible
+> with these standards and has the side effect of making it difficult for
+> use cases such as case sensitive API credentials in configuration.
+> For eg: MyApiKey=MySecret
+
+
+```yaml
+clientId: "j-30MUN2PTUHMAN"
+logs:
+  update:
+    url: "http://bo.wix.com/bi-supersonic-logger/api/v1/logs/run"
+    method: POST
+
+logs:
+  update:
+    method: GET
+jobs:
+  get:
+    url: "http://localhost:80/get/new/job"
+    method: POST
+    headers:
+      "Content-type": "application/json"
+      params:
+        "clientid": "{{ .ClientId}}"
+
+```
+
+
+
 ### Running tests
 
 *  expires all test results

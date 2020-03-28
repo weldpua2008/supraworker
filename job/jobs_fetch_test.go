@@ -4,27 +4,26 @@ import (
 	"fmt"
 	"github.com/weldpua2008/supraworker/model"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
-
+    "github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	// "os/exec"
-	// "os"
 	"context"
 	"encoding/json"
-
 	"testing"
 	"time"
+    "bytes"
 )
 
-// func init() {
-// 	cmdtest.StartTrace()
-// }
+func init() {
+	cmdtest.StartTrace()
+}
 func TestHelperProcess(t *testing.T) {
 	cmdtest.TestHelperProcess(t)
 }
 
 func TestGenerateJobs(t *testing.T) {
+
 	// startTrace()
 	want := "{\"job_uid\":\"job-testing.(*common).Name-fm\",\"run_uid\":\"1\",\"extra_run_id\":\"1\",\"msg\":\"'S'\\n\"}"
 	var got string
@@ -65,8 +64,9 @@ func TestGenerateJobs(t *testing.T) {
 		} else if len(responses) == 1 {
 			c = responses[0]
 		}
-
-		js, err := json.Marshal(&c)
+        c1:= make([]ApiJobResponse,0)
+        c1 = append(c1, c)
+		js, err := json.Marshal(&c1)
 		if err != nil {
 			log.Tracef("Failed to marshal for '%v' due %v", c, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -88,20 +88,29 @@ func TestGenerateJobs(t *testing.T) {
 		model.FetchNewJobAPIURL = ""
 		// restoreLevel()
 	}()
+    viper.SetConfigType("yaml")
+    var yamlExample = []byte(`
+    logs:
+      update:
+        method: GET
+    jobs:
+      get:
+        url: "`+ srv.URL+`"
+        method: POST
+        headers:
+          "Content-type": "application/json"
+    `)
+
+    viper.ReadConfig(bytes.NewBuffer(yamlExample))
+
 	model.FetchNewJobAPIURL = srv.URL
 	log.Trace(fmt.Sprintf("model.FetchNewJobAPIURL  %s", model.FetchNewJobAPIURL))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // cancel when we are getting the kill signal or exit
 	jobs := make(chan *model.Job, 1)
 
-	go StartGenerateJobs(jobs, ctx, time.Duration(5)*time.Millisecond)
+	go StartGenerateJobs(jobs, ctx, time.Duration(5)*time.Second)
 
-	// job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("exit 0"))
-	// job.StreamInterval = 1 * time.Millisecond
-	// err := job.Run()
-	// if err != nil {
-	// 	t.Errorf("Expected no error in %s, got %v", cmdtest.GetFunctionName(t.Name), err)
-	// }
 	for job := range jobs {
 		if job.Status != model.JOB_STATUS_PENDING {
 			t.Errorf("Expected %s, got %s", model.JOB_STATUS_PENDING, job.Status)

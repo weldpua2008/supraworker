@@ -7,15 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	log           = logrus.WithFields(logrus.Fields{"package": "model"})
-	previousLevel logrus.Level
-)
-
-func init() {
-	previousLevel = logrus.GetLevel()
-}
-
 // startTrace logs
 // works like this in tests:
 // startTrace()

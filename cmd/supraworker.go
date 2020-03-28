@@ -7,8 +7,10 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"time"
 	// "strings"
 	"bytes"
@@ -19,7 +21,6 @@ import (
 	model "github.com/weldpua2008/supraworker/model"
 	worker "github.com/weldpua2008/supraworker/worker"
 	"html/template"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -75,13 +76,14 @@ var rootCmd = &cobra.Command{
 			shutchan <- true
 		}()
 
-		if verbose {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
 		if traceFlag {
 			logrus.SetLevel(logrus.TraceLevel)
+		} else if verbose {
+			logrus.SetLevel(logrus.DebugLevel)
 		}
+
 		log.Trace("Config file:", viper.ConfigFileUsed())
+		// log.Warnf("\nviper %v\n\n",viper.GetString("jobs.get.url"))
 
 		log.Debug(viper.GetString("jobs.get.url"))
 		// log.Debug(viper.GetStringMapString("jobs.get.headers"))
@@ -91,22 +93,6 @@ var rootCmd = &cobra.Command{
 		delay := int64(viper.GetInt("api_delay_sec"))
 		if delay < 1 {
 			delay = 1
-		}
-		model.StreamingAPIURL = viper.GetString("logs.update.url")
-		model.StreamingAPIMethod = viper.GetString("logs.update.method")
-		switch model.StreamingAPIMethod {
-		case http.MethodGet:
-		case http.MethodHead:
-		case http.MethodPost:
-		case http.MethodPut:
-		case http.MethodPatch:
-		case http.MethodDelete:
-		case http.MethodConnect:
-		case http.MethodOptions:
-		case http.MethodTrace:
-
-		default:
-			model.StreamingAPIMethod = http.MethodPost
 		}
 
 		api_delay_sec := time.Duration(delay) * time.Second
@@ -120,6 +106,14 @@ var rootCmd = &cobra.Command{
 			}
 			log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
 		}
+
+		// load config
+		model.ReinitializeConfig()
+		viper.WatchConfig()
+		viper.OnConfigChange(func(e fsnotify.Event) {
+			log.Trace("Config file changed:", e.Name)
+			model.ReinitializeConfig()
+		})
 
 		go job.StartGenerateJobs(jobs, ctx, api_delay_sec)
 		for w := 1; w <= numWorkers; w++ {

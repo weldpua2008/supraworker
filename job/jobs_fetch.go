@@ -6,10 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
+	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
+	// "runtime"
 
+	config "github.com/weldpua2008/supraworker/config"
 	model "github.com/weldpua2008/supraworker/model"
 )
 
@@ -59,12 +64,77 @@ func NewApiJobRequest() *ApiJobRequest {
 	}
 }
 
+// GetNewJobs fetch from your API the jobs for execution
+func GetNewJobs(ctx context.Context) (error, []map[string]interface{}) {
+
+	localctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var rawResponseArray []map[string]interface{}
+	var rawResponse map[string]interface{}
+
+	// c := NewApiJobRequest()
+	t := viper.GetStringMapString("jobs.get.params")
+	c := make(map[string]string)
+	for k, v := range t {
+		var tpl_bytes bytes.Buffer
+		tpl := template.Must(template.New("params").Parse(v))
+		err := tpl.Execute(&tpl_bytes, config.C)
+		if err != nil {
+			log.Warn("executing template:", err)
+		}
+		c[k] = tpl_bytes.String()
+		// log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
+	}
+    var req *http.Request
+    var err error
+    if len(c) > 0{
+        jsonStr, err := json.Marshal(&c)
+
+        if err != nil {
+            return fmt.Errorf("Failed to marshal request due %s", err), nil
+        }
+        log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL, jsonStr))
+        req, err = http.NewRequestWithContext(localctx,
+    		model.FetchNewJobAPIMethod,
+    		model.FetchNewJobAPIURL,
+    		bytes.NewBuffer(jsonStr))
+
+    }else{
+        req, err = http.NewRequestWithContext(localctx,
+            model.FetchNewJobAPIMethod,
+            model.FetchNewJobAPIURL,nil)
+    }
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: time.Duration(15 * time.Second)}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("Failed to send request due %s", err), nil
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error read response body got %s", err), nil
+	}
+	err = json.Unmarshal(body, &rawResponseArray)
+	if err != nil {
+		err = json.Unmarshal(body, &rawResponse)
+		if err != nil {
+			return fmt.Errorf("error Unmarshal response: %s due %s", body, err), nil
+		}
+		rawResponseArray = append(rawResponseArray, rawResponse)
+	}
+	return nil, rawResponseArray
+
+}
+
 // StartGenerateJobs gorutine for getting jobs from API with internal
 // exists on kill
 func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.Duration) error {
-
 	if len(model.FetchNewJobAPIURL) < 1 {
 		close(jobs)
+		log.Warn("Please provide URL to fetch new Jobs")
 		return fmt.Errorf("FetchNewJobAPIURL is undefined")
 	}
 	doneNumJobs := make(chan int, 1)
@@ -92,57 +162,51 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 
 				return
 			case <-tickerGenerateJobs.C:
-				// example Job
-				// job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("echo %v;for i in {1..20};do date;done; for i in {1..5};do date;sleep 5 && echo $(date);done;exit 0", j))
-				// job := model.NewJob(fmt.Sprintf("job-%v", j), fmt.Sprintf("for i in {1..20};do for ii in {1..50};do   echo \"$(date) %v\";done;sleep 3;done;exit 0", j))
-				c := NewApiJobRequest()
-				jsonStr, err := json.Marshal(&c)
-				if err != nil {
-					log.Tracef("Failed to marshal request due %s", err)
-					// sendSucessfully = false
-					continue
+				// log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
+				if err, jobsData := GetNewJobs(ctx); err == nil {
+					var JobId string
+					var CMD string
+					var RunUID string
+					var ExtraRunUID string
+
+					for _, jobResponse := range jobsData {
+
+						for key, value := range jobResponse {
+							// log.Infof("k %v, v %v", key, value)
+							switch strings.ToLower(key) {
+							case "id", "jobid", "job_id", "job_uid":
+								JobId = fmt.Sprintf("%v", value)
+							case "cmd", "command", "execute":
+								CMD = fmt.Sprintf("%v", value)
+							case "runid", "runuid", "run_id", "run_uid":
+								RunUID = fmt.Sprintf("%v", value)
+							case "extrarunid", "extrarunuid", "extrarun_id", "extrarun_uid", "extra_run_id", "extra_run_uid":
+								ExtraRunUID = fmt.Sprintf("%v", value)
+							}
+						}
+						if len(JobId) < 1 {
+							continue
+						}
+
+						job := model.NewJob(fmt.Sprintf("%v", JobId), fmt.Sprintf("%s", CMD))
+						job.RunUID = RunUID
+						job.ExtraRunUID = ExtraRunUID
+						job.RawParams = append(job.RawParams, jobResponse)
+
+						job.SetContext(ctx)
+						job.TTR = 0
+						if JobsRegistry.Add(job) {
+							jobs <- job
+							j += 1
+							log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
+						} else {
+							log.Trace(fmt.Sprintf("Duplicated job id %v ", job.Id))
+						}
+					}
 				} else {
-					log.Tracef("Marshal request %v", c)
-
-				}
-				log.Trace(fmt.Sprintf("New Job request %s  to %s", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL))
-
-				req, err := http.NewRequest(model.FetchNewJobAPIMethod,
-					model.FetchNewJobAPIURL,
-					bytes.NewBuffer(jsonStr))
-				req.Header.Set("Content-Type", "application/json")
-
-				// req.Header.Set("X-Custom-Header", "myvalue")
-				// req.Header.Set("Content-Type", "application/json")
-				client := &http.Client{}
-				resp, err := client.Do(req)
-				if err != nil {
-					log.Tracef("Failed to send request due %s", err)
-					// sendSucessfully = false
-					continue
-				}
-				defer resp.Body.Close()
-				body, _ := ioutil.ReadAll(resp.Body)
-				var jobResponse ApiJobResponse
-				err = json.Unmarshal(body, &jobResponse)
-				if err != nil {
-					log.Tracef("error Unmarshal response: %v due %s", body, err)
-					continue
+					log.Trace(fmt.Sprintf("Failed fetch a new Jobs portion due %v ", err))
 				}
 
-				job := model.NewJob(fmt.Sprintf("%v", jobResponse.JobId), fmt.Sprintf("%s", jobResponse.CMD))
-				job.RunUID = jobResponse.RunUID
-				job.ExtraRunUID = jobResponse.ExtraRunUID
-
-				job.SetContext(ctx)
-				job.TTR = 0
-				if JobsRegistry.Add(job) {
-					jobs <- job
-					log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
-				} else {
-					log.Trace(fmt.Sprintf("Duplicated job id %v ", job.Id))
-				}
-				j += 1
 			}
 		}
 	}()

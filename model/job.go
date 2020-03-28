@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -17,42 +16,12 @@ import (
 	"time"
 )
 
-var (
-	osGetEnv           = os.Getenv
-	execCommandContext = exec.CommandContext
-
-	// URL for pulling new jobs
-	FetchNewJobAPIURL string
-	// Http METHOD for fetch Jobs API
-	FetchNewJobAPIMethod = "POST"
-
-	// URL for uploading log steams
-	StreamingAPIURL string
-	// Http METHOD for streaming log API
-	StreamingAPIMethod = "POST"
-)
-
 // func SwitchExecCommand(f func(command string, args ...string) *exec.Cmd) {
 // 	execCommand = f
 // }
 // func SwitchExecCommandContext(f func(ctx context.Context, command string, args ...string) *exec.Cmd) {
 // 	execCommandContext = f
 // }
-
-// Jobber defines a job interface.
-type Jobber interface {
-	Run() error
-	Cancel() error
-	Finish() error
-}
-
-const (
-	JOB_STATUS_PENDING     = "pending"
-	JOB_STATUS_IN_PROGRESS = "in_progress"
-	JOB_STATUS_SUCCESS     = "success"
-	JOB_STATUS_ERROR       = "error"
-	JOB_STATUS_CANCELED    = "canceled"
-)
 
 // IsTerminalStatus returns true if status is terminal:
 // - Failed
@@ -89,10 +58,14 @@ type Job struct {
 	ExitCode       int
 	cmd            *exec.Cmd
 	ctx            context.Context
+
+	// params
+	RawParams []map[string]interface{}
 	// steram interface
 	elements          uint
 	notify            chan interface{}
 	notifyStopStreams chan interface{}
+	notifyLogSent     chan interface{}
 	stremMu           sync.Mutex
 	counter           uint
 	timeQuote         bool
@@ -179,10 +152,17 @@ func (j *Job) quotaHit() bool {
 func (j *Job) resetCounterLoop(after time.Duration) {
 	ticker := time.NewTicker(after)
 	tickerTimeInterval := time.NewTicker(2 * after)
+	defer func() {
+		ticker.Stop()
+		tickerTimeInterval.Stop()
+		close(j.notifyLogSent)
+	}()
 	for {
 		select {
 		case <-j.notifyStopStreams:
 			j.doSendSteamBuf()
+			j.notifyLogSent <- struct{}{}
+
 			log.Tracef("resetCounterLoop finished for '%v'", j.Id)
 			return
 		case <-ticker.C:
@@ -212,15 +192,11 @@ func (j *Job) doNotify() {
 	}
 }
 
-func (j *Job) doSendSteamBuf() {
+func (j *Job) doSendSteamBuf() error {
 	log.Tracef("doSendSteamBuf for '%v' len %v", j.Id, len(j.streamsBuf))
-	sendSucessfully := true
 	if len(j.streamsBuf) > 0 {
 		j.stremMu.Lock()
 		defer j.stremMu.Unlock()
-		// for _, oneStream := range j.streamsBuf {
-		// 	fmt.Printf("%s", oneStream)
-		// }
 		streamsReader := strings.NewReader(strings.Join(j.streamsBuf, ""))
 		if len(StreamingAPIURL) > 0 {
 			c := struct {
@@ -237,43 +213,39 @@ func (j *Job) doSendSteamBuf() {
 
 			jsonStr, err := json.Marshal(&c)
 			if err != nil {
-				log.Tracef("Failed to marshal for '%v' due %s", j.Id, err)
+				return fmt.Errorf("Failed to marshal for '%v' due %s", j.Id, err)
 			}
 			log.Tracef(string(jsonStr))
 			req, err := http.NewRequest(StreamingAPIMethod,
 				StreamingAPIURL,
 				bytes.NewBuffer(jsonStr))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "application/json")
 
 			if err != nil {
-				log.Tracef("Failed to prepare request '%v' due %s", j.Id, err)
-				sendSucessfully = false
+				return fmt.Errorf("Failed to prepare request '%v' due %s", j.Id, err)
 			}
 			log.Trace(fmt.Sprintf("New Streaming request %s  to %s from %s", StreamingAPIMethod, StreamingAPIURL, j.Id))
 
-			// req.Header.Set("X-Custom-Header", "myvalue")
-			// req.Header.Set("Content-Type", "application/json")
-			client := &http.Client{}
+			client := &http.Client{Timeout: time.Duration(15 * time.Second)}
 			resp, err := client.Do(req)
 			if err != nil {
-				log.Tracef("Failed to sendfor '%v' len %v due %s", j.Id, len(j.streamsBuf), err)
-				sendSucessfully = false
+				return fmt.Errorf("Failed to sendfor '%v' len %v due %s", j.Id, len(j.streamsBuf), err)
 			}
 			defer resp.Body.Close()
-			log.Tracef("Response for '%s'", j.Id)
-			body, _ := ioutil.ReadAll(resp.Body)
-			log.Tracef("Response for '%v' %s", j.Id, body)
+			if body, err := ioutil.ReadAll(resp.Body); err == nil {
+				log.Tracef("Response for '%v' %s", j.Id, body)
+			}
 
 		} else {
 			var buf bytes.Buffer
 			buf.ReadFrom(streamsReader)
 			fmt.Println(buf.String())
 		}
-		if sendSucessfully {
-			j.streamsBuf = nil
-		}
+		j.streamsBuf = nil
 
 	}
+	return nil
 }
 
 // runcmd executes command
@@ -376,7 +348,6 @@ func (j *Job) runcmd() error {
 	<-notifyStderrSent
 	// signal that we've read all logs
 	j.notifyStopStreams <- struct{}{}
-
 	status := j.cmd.ProcessState.Sys()
 	ws, ok := status.(syscall.WaitStatus)
 	if !ok {
@@ -429,6 +400,7 @@ func (j *Job) Run() error {
 			j.updateStatus(JOB_STATUS_ERROR)
 		}
 	}
+	// <-j.notifyLogSent
 	return err
 }
 
@@ -465,6 +437,7 @@ func NewJob(id string, cmd string) *Job {
 		TTR:               0,
 		notify:            make(chan interface{}),
 		notifyStopStreams: make(chan interface{}),
+		notifyLogSent:     make(chan interface{}),
 		counter:           0,
 		elements:          100,
 		UseSHELL:          true,
