@@ -1,18 +1,18 @@
 package job
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/spf13/viper"
 	"github.com/weldpua2008/supraworker/model"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
-    "github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"context"
-	"encoding/json"
 	"testing"
 	"time"
-    "bytes"
 )
 
 func init() {
@@ -64,8 +64,8 @@ func TestGenerateJobs(t *testing.T) {
 		} else if len(responses) == 1 {
 			c = responses[0]
 		}
-        c1:= make([]ApiJobResponse,0)
-        c1 = append(c1, c)
+		c1 := make([]ApiJobResponse, 0)
+		c1 = append(c1, c)
 		js, err := json.Marshal(&c1)
 		if err != nil {
 			log.Tracef("Failed to marshal for '%v' due %v", c, err)
@@ -88,20 +88,20 @@ func TestGenerateJobs(t *testing.T) {
 		model.FetchNewJobAPIURL = ""
 		// restoreLevel()
 	}()
-    viper.SetConfigType("yaml")
-    var yamlExample = []byte(`
+	viper.SetConfigType("yaml")
+	var yamlExample = []byte(`
     logs:
       update:
         method: GET
     jobs:
       get:
-        url: "`+ srv.URL+`"
+        url: "` + srv.URL + `"
         method: POST
         headers:
           "Content-type": "application/json"
     `)
 
-    viper.ReadConfig(bytes.NewBuffer(yamlExample))
+	viper.ReadConfig(bytes.NewBuffer(yamlExample))
 
 	model.FetchNewJobAPIURL = srv.URL
 	log.Trace(fmt.Sprintf("model.FetchNewJobAPIURL  %s", model.FetchNewJobAPIURL))

@@ -36,15 +36,15 @@ func chooseHttpMethod(provided string, def string) string {
 
 // ReinitializeConfig on load or config file changes
 func ReinitializeConfig() error {
-    if len(viper.GetString("logs.update.url")) > 0{
-        StreamingAPIURL = viper.GetString("logs.update.url")
+	if len(viper.GetString("logs.update.url")) > 0 {
+		StreamingAPIURL = viper.GetString("logs.update.url")
 
-        }
+	}
 	StreamingAPIMethod = chooseHttpMethod(viper.GetString("logs.update.method"), http.MethodPost)
-    if len(viper.GetString("jobs.get.url")) > 0{
-        FetchNewJobAPIURL = viper.GetString("jobs.get.url")
+	if len(viper.GetString("jobs.get.url")) > 0 {
+		FetchNewJobAPIURL = viper.GetString("jobs.get.url")
 
-    }
+	}
 	FetchNewJobAPIMethod = chooseHttpMethod(viper.GetString("jobs.get.method"), http.MethodPost)
 
 	return nil

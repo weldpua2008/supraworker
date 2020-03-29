@@ -67,8 +67,8 @@ func NewApiJobRequest() *ApiJobRequest {
 // GetNewJobs fetch from your API the jobs for execution
 func GetNewJobs(ctx context.Context) (error, []map[string]interface{}) {
 
-	localctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// localctx, cancel := context.WithCancel(ctx)
+	// defer cancel()
 	var rawResponseArray []map[string]interface{}
 	var rawResponse map[string]interface{}
 
@@ -85,25 +85,25 @@ func GetNewJobs(ctx context.Context) (error, []map[string]interface{}) {
 		c[k] = tpl_bytes.String()
 		// log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
 	}
-    var req *http.Request
-    var err error
-    if len(c) > 0{
-        jsonStr, err := json.Marshal(&c)
+	var req *http.Request
+	var err error
+	if len(c) > 0 {
+		jsonStr, err := json.Marshal(&c)
 
-        if err != nil {
-            return fmt.Errorf("Failed to marshal request due %s", err), nil
-        }
-        log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL, jsonStr))
-        req, err = http.NewRequestWithContext(localctx,
-    		model.FetchNewJobAPIMethod,
-    		model.FetchNewJobAPIURL,
-    		bytes.NewBuffer(jsonStr))
+		if err != nil {
+			return fmt.Errorf("Failed to marshal request due %s", err), nil
+		}
+		log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL, jsonStr))
+		// req, err = http.NewRequestWithContext(localctx,
+		req, err = http.NewRequest(model.FetchNewJobAPIMethod,
+			model.FetchNewJobAPIURL,
+			bytes.NewBuffer(jsonStr))
 
-    }else{
-        req, err = http.NewRequestWithContext(localctx,
-            model.FetchNewJobAPIMethod,
-            model.FetchNewJobAPIURL,nil)
-    }
+	} else {
+		// req, err = http.NewRequestWithContext(localctx,
+		req, err = http.NewRequest(model.FetchNewJobAPIMethod,
+			model.FetchNewJobAPIURL, nil)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
