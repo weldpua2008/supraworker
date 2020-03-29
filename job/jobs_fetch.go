@@ -1,20 +1,20 @@
 package job
 
 import (
-	"bytes"
+	// "bytes"
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-	"html/template"
-	"io/ioutil"
-	"net/http"
+	// "github.com/spf13/viper"
+	// "html/template"
+	// "io/ioutil"
+	// "net/http"
 	"strings"
 	"time"
 	// "runtime"
 
-	config "github.com/weldpua2008/supraworker/config"
+	// config "github.com/weldpua2008/supraworker/config"
 	model "github.com/weldpua2008/supraworker/model"
 )
 
@@ -64,71 +64,6 @@ func NewApiJobRequest() *ApiJobRequest {
 	}
 }
 
-// GetNewJobs fetch from your API the jobs for execution
-func GetNewJobs(ctx context.Context) (error, []map[string]interface{}) {
-
-	// localctx, cancel := context.WithCancel(ctx)
-	// defer cancel()
-	var rawResponseArray []map[string]interface{}
-	var rawResponse map[string]interface{}
-
-	// c := NewApiJobRequest()
-	t := viper.GetStringMapString("jobs.get.params")
-	c := make(map[string]string)
-	for k, v := range t {
-		var tpl_bytes bytes.Buffer
-		tpl := template.Must(template.New("params").Parse(v))
-		err := tpl.Execute(&tpl_bytes, config.C)
-		if err != nil {
-			log.Warn("executing template:", err)
-		}
-		c[k] = tpl_bytes.String()
-		// log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
-	}
-	var req *http.Request
-	var err error
-	if len(c) > 0 {
-		jsonStr, err := json.Marshal(&c)
-
-		if err != nil {
-			return fmt.Errorf("Failed to marshal request due %s", err), nil
-		}
-		log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL, jsonStr))
-		// req, err = http.NewRequestWithContext(localctx,
-		req, err = http.NewRequest(model.FetchNewJobAPIMethod,
-			model.FetchNewJobAPIURL,
-			bytes.NewBuffer(jsonStr))
-
-	} else {
-		// req, err = http.NewRequestWithContext(localctx,
-		req, err = http.NewRequest(model.FetchNewJobAPIMethod,
-			model.FetchNewJobAPIURL, nil)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{Timeout: time.Duration(15 * time.Second)}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("Failed to send request due %s", err), nil
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("error read response body got %s", err), nil
-	}
-	err = json.Unmarshal(body, &rawResponseArray)
-	if err != nil {
-		err = json.Unmarshal(body, &rawResponse)
-		if err != nil {
-			return fmt.Errorf("error Unmarshal response: %s due %s", body, err), nil
-		}
-		rawResponseArray = append(rawResponseArray, rawResponse)
-	}
-	return nil, rawResponseArray
-
-}
-
 // StartGenerateJobs gorutine for getting jobs from API with internal
 // exists on kill
 func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.Duration) error {
@@ -163,7 +98,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 				return
 			case <-tickerGenerateJobs.C:
 				// log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
-				if err, jobsData := GetNewJobs(ctx); err == nil {
+				if err, jobsData := model.NewRemoteApiRequest(ctx, "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
 					var JobId string
 					var CMD string
 					var RunUID string
