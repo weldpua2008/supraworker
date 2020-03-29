@@ -67,10 +67,10 @@ func TestRegistryDelete(t *testing.T) {
 		if !r.Add(job) {
 			t.Errorf("Expect to add job")
 		}
-		if !r.Delete(job.Id) {
+		if !r.Delete(job.StoreKey()) {
 			t.Errorf("Expect to delete job")
 		}
-		if r.Delete(job.Id) {
+		if r.Delete(job.StoreKey()) {
 			t.Errorf("Expect the job to be already deleted")
 		}
 

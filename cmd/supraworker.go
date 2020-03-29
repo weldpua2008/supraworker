@@ -13,14 +13,14 @@ import (
 
 	"time"
 	// "strings"
-	"bytes"
+	// "bytes"
 	"context"
 	"github.com/sirupsen/logrus"
-	config "github.com/weldpua2008/supraworker/config"
+	// config "github.com/weldpua2008/supraworker/config"
 	job "github.com/weldpua2008/supraworker/job"
 	model "github.com/weldpua2008/supraworker/model"
 	worker "github.com/weldpua2008/supraworker/worker"
-	"html/template"
+	// "html/template"
 	"os"
 	"os/signal"
 	"sync"
@@ -83,29 +83,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		log.Trace("Config file:", viper.ConfigFileUsed())
-		// log.Warnf("\nviper %v\n\n",viper.GetString("jobs.get.url"))
-
-		log.Debug(viper.GetString("jobs.get.url"))
-		// log.Debug(viper.GetStringMapString("jobs.get.headers"))
-		log.Debug(viper.GetStringMapString("headers"))
-
-		t := viper.GetStringMapString("jobs.get.params")
 		delay := int64(viper.GetInt("api_delay_sec"))
 		if delay < 1 {
 			delay = 1
 		}
 
 		api_delay_sec := time.Duration(delay) * time.Second
-
-		for k, v := range t {
-			var tpl_bytes bytes.Buffer
-			tpl := template.Must(template.New("params").Parse(v))
-			err := tpl.Execute(&tpl_bytes, config.C)
-			if err != nil {
-				log.Warn("executing template:", err)
-			}
-			log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
-		}
 
 		// load config
 		model.ReinitializeConfig()

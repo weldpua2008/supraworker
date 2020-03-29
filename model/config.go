@@ -15,6 +15,7 @@ import (
 // }
 
 func chooseHttpMethod(provided string, def string) string {
+	// log.Tracef("provided %v",provided)
 	provided = strings.ToUpper(provided)
 	switch provided {
 	case http.MethodGet:
@@ -43,7 +44,6 @@ func ReinitializeConfig() error {
 	StreamingAPIMethod = chooseHttpMethod(viper.GetString("logs.update.method"), http.MethodPost)
 	if len(viper.GetString("jobs.get.url")) > 0 {
 		FetchNewJobAPIURL = viper.GetString("jobs.get.url")
-
 	}
 	FetchNewJobAPIMethod = chooseHttpMethod(viper.GetString("jobs.get.method"), http.MethodPost)
 

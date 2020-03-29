@@ -6,6 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/viper"
+	config "github.com/weldpua2008/supraworker/config"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os/exec"
@@ -59,7 +62,7 @@ type Job struct {
 	cmd            *exec.Cmd
 	ctx            context.Context
 
-	// params
+	// params got from your API
 	RawParams []map[string]interface{}
 	// steram interface
 	elements          uint
@@ -73,6 +76,10 @@ type Job struct {
 	streamsBuf        []string
 }
 
+func (j *Job) StoreKey() string {
+
+	return fmt.Sprintf("%s:%s:%s", j.Id, j.RunUID, j.ExtraRunUID)
+}
 func (j *Job) updatelastActivity() {
 	j.LastActivityAt = time.Now()
 }
@@ -81,6 +88,56 @@ func (j *Job) updateStatus(status string) error {
 	log.Trace(fmt.Sprintf("Job %s status %s -> %s", j.Id, j.Status, status))
 	j.Status = status
 	return nil
+}
+
+// GetRawParams from all previous calls
+func (j *Job) GetRawParams() []map[string]interface{} {
+
+	return j.RawParams
+}
+
+// GetRawParams from all previous calls
+func (j *Job) PutRawParams(params []map[string]interface{}) error {
+	j.RawParams = params
+	return nil
+}
+
+// GetAPIParams from all previous calls
+func (j *Job) GetAPIParams(stage string) map[string]string {
+
+	c := make(map[string]string)
+	params := viper.GetStringMapString(fmt.Sprintf("jobs.%s.params", stage))
+	for k, v := range params {
+		var tpl_bytes bytes.Buffer
+		tpl := template.Must(template.New("params").Parse(v))
+		err := tpl.Execute(&tpl_bytes, config.C)
+		if err != nil {
+			log.Tracef("params executing template: %s", err)
+			continue
+		}
+		c[k] = tpl_bytes.String()
+	}
+	resendParamsKeys := viper.GetStringSlice(fmt.Sprintf("jobs.%s.resend-params", stage))
+	//
+	for _, v := range resendParamsKeys {
+		var tpl_bytes bytes.Buffer
+		tpl := template.Must(template.New("params").Parse(v))
+
+		if err := tpl.Execute(&tpl_bytes, config.C); err != nil {
+			log.Tracef("resendParamsKeys executing template: %s", err)
+			continue
+		}
+		resandParamKey := tpl_bytes.String()
+		for _, rawVal := range j.RawParams {
+			// log.Tracef("rawVal %v", rawVal)
+			if val, ok := rawVal[resandParamKey]; ok {
+				c[resandParamKey] = fmt.Sprintf("%s", val)
+			}
+
+		}
+	}
+
+	return c
 }
 
 // Cancel job
@@ -98,6 +155,12 @@ func (j *Job) Cancel() error {
 
 		j.updateStatus(JOB_STATUS_CANCELED)
 		j.updatelastActivity()
+		stage := "cancel"
+		params := j.GetAPIParams(stage)
+		if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+			log.Tracef("failed to update api, got: %s and %s", result, err)
+		}
+
 	} else {
 		log.Trace(fmt.Sprintf("Job %s in terminal '%s' status ", j.Id, j.Status))
 	}
@@ -119,6 +182,11 @@ func (j *Job) Failed() error {
 		defer j.mu.Unlock()
 		j.updateStatus(JOB_STATUS_ERROR)
 		j.updatelastActivity()
+		stage := "failed"
+		params := j.GetAPIParams(stage)
+		if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+			log.Tracef("failed to update api, got: %s and %s", result, err)
+		}
 	}
 	return nil
 }
@@ -400,6 +468,11 @@ func (j *Job) Run() error {
 			j.updateStatus(JOB_STATUS_ERROR)
 		}
 	}
+	stage := "run"
+	params := j.GetAPIParams(stage)
+	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+		log.Tracef("failed to update api, got: %s and %s", result, err)
+	}
 	// <-j.notifyLogSent
 	return err
 }
@@ -411,6 +484,12 @@ func (j *Job) Finish() error {
 	defer j.mu.Unlock()
 	j.updatelastActivity()
 	j.updateStatus(JOB_STATUS_SUCCESS)
+	stage := "finish"
+	params := j.GetAPIParams(stage)
+	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+		log.Tracef("failed to update api, got: %s and %s", result, err)
+	}
+
 	return nil
 }
 
@@ -438,6 +517,7 @@ func NewJob(id string, cmd string) *Job {
 		notify:            make(chan interface{}),
 		notifyStopStreams: make(chan interface{}),
 		notifyLogSent:     make(chan interface{}),
+		RawParams:         make([]map[string]interface{}, 0),
 		counter:           0,
 		elements:          100,
 		UseSHELL:          true,

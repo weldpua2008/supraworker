@@ -21,16 +21,16 @@ type Registry struct {
 // Add a job.
 // Returns false on duplicate or invalid job id.
 func (r *Registry) Add(rec *Job) bool {
-	if rec == nil || rec.Id == "" {
+	if rec == nil || rec.StoreKey() == "" {
 		return false
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if _, ok := r.all[rec.Id]; ok {
+	if _, ok := r.all[rec.StoreKey()]; ok {
 		return false
 	}
 
-	r.all[rec.Id] = rec
+	r.all[rec.StoreKey()] = rec
 	return true
 }
 

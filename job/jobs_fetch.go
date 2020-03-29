@@ -127,7 +127,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 						job.RunUID = RunUID
 						job.ExtraRunUID = ExtraRunUID
 						job.RawParams = append(job.RawParams, jobResponse)
-
+						log.Tracef("job.RawParams %v", job.RawParams)
 						job.SetContext(ctx)
 						job.TTR = 0
 						if JobsRegistry.Add(job) {
