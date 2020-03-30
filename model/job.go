@@ -40,6 +40,11 @@ func IsTerminalStatus(status string) bool {
 	return false
 }
 
+func StoreKey(Id string, RunUID string, ExtraRunUID string) string {
+
+	return fmt.Sprintf("%s:%s:%s", Id, RunUID, ExtraRunUID)
+}
+
 type Job struct {
 	Id             string
 	RunUID         string
@@ -78,7 +83,7 @@ type Job struct {
 
 func (j *Job) StoreKey() string {
 
-	return fmt.Sprintf("%s:%s:%s", j.Id, j.RunUID, j.ExtraRunUID)
+	return StoreKey(j.Id, j.RunUID, j.ExtraRunUID)
 }
 func (j *Job) updatelastActivity() {
 	j.LastActivityAt = time.Now()

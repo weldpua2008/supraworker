@@ -17,6 +17,23 @@ import (
 	config "github.com/weldpua2008/supraworker/config"
 )
 
+func GetAPIParamsFromSection(stage string) map[string]string {
+
+	c := make(map[string]string)
+	params := viper.GetStringMapString(fmt.Sprintf("jobs.%s.params", stage))
+	for k, v := range params {
+		var tpl_bytes bytes.Buffer
+		tpl := template.Must(template.New("params").Parse(v))
+		err := tpl.Execute(&tpl_bytes, config.C)
+		if err != nil {
+			log.Tracef("params executing template: %s", err)
+			continue
+		}
+		c[k] = tpl_bytes.String()
+	}
+	return c
+}
+
 // DoJobApiCall for the jobs stages
 func DoJobApiCall(ctx context.Context, params map[string]string, stage string) (error, []map[string]interface{}) {
 

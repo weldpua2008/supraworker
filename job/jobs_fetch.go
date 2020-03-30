@@ -64,7 +64,8 @@ func NewApiJobRequest() *ApiJobRequest {
 	}
 }
 
-// StartGenerateJobs gorutine for getting jobs from API with internal
+// StartGenerateJobs goroutine for getting jobs from API with internal
+// it expects `model.FetchNewJobAPIURL`
 // exists on kill
 func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.Duration) error {
 	if len(model.FetchNewJobAPIURL) < 1 {
@@ -99,15 +100,14 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 			case <-tickerGenerateJobs.C:
 				// log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
 				if err, jobsData := model.NewRemoteApiRequest(ctx, "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
-					var JobId string
-					var CMD string
-					var RunUID string
-					var ExtraRunUID string
 
 					for _, jobResponse := range jobsData {
+						var JobId string
+						var CMD string
+						var RunUID string
+						var ExtraRunUID string
 
 						for key, value := range jobResponse {
-							// log.Infof("k %v, v %v", key, value)
 							switch strings.ToLower(key) {
 							case "id", "jobid", "job_id", "job_uid":
 								JobId = fmt.Sprintf("%v", value)
@@ -134,9 +134,10 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 							jobs <- job
 							j += 1
 							log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
-						} else {
-							log.Trace(fmt.Sprintf("Duplicated job id %v ", job.Id))
 						}
+						// else {
+						// 	log.Trace(fmt.Sprintf("Duplicated job id %v ", job.Id))
+						// }
 					}
 				} else {
 					log.Trace(fmt.Sprintf("Failed fetch a new Jobs portion due %v ", err))
@@ -146,7 +147,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 		}
 	}()
 
-	// Single gorutine for canceling jobs
+	// Single goroutine for canceling jobs
 	// We are getting such jobs from API
 	// exists on kill
 
@@ -167,10 +168,47 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 				if n > 0 {
 					j += n
 					log.Trace(fmt.Sprintf("Cleared %v/%v jobs", n, j))
+				}
 
+				stage := "cancelation"
+				params := model.GetAPIParamsFromSection(stage)
+				if err, jobsCancelationData := model.DoJobApiCall(ctx, params, stage); err != nil {
+					log.Tracef("failed to update api, got: %s and %s", jobsCancelationData, err)
+				} else {
+
+					for _, jobResponse := range jobsCancelationData {
+						var JobId string
+						// var CMD string
+						var RunUID string
+						var ExtraRunUID string
+
+						for key, value := range jobResponse {
+							switch strings.ToLower(key) {
+							case "id", "jobid", "job_id", "job_uid":
+								JobId = fmt.Sprintf("%v", value)
+							// case "cmd", "command", "execute":
+							//     CMD = fmt.Sprintf("%v", value)
+							case "runid", "runuid", "run_id", "run_uid":
+								RunUID = fmt.Sprintf("%v", value)
+							case "extrarunid", "extrarunuid", "extrarun_id", "extrarun_uid", "extra_run_id", "extra_run_uid":
+								ExtraRunUID = fmt.Sprintf("%v", value)
+							}
+						}
+						if len(JobId) < 1 {
+							continue
+						}
+						jobCancelationId := model.StoreKey(JobId, RunUID, ExtraRunUID)
+						if jobCancelation, ok := JobsRegistry.Record(jobCancelationId); ok {
+							if err := jobCancelation.Cancel(); err != nil {
+								log.Tracef("Can't cancel '%s' got %s ", jobCancelationId, err)
+							}
+						}
+					}
 				}
 			}
+
 		}
+
 	}()
 
 	numSentJobs := <-doneNumJobs

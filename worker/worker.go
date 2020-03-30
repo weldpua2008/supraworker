@@ -14,7 +14,7 @@ var (
 	log = logrus.WithFields(logrus.Fields{"package": "worker"})
 )
 
-// StartWorker run gorutine for executing commands and reporting to your API
+// StartWorker run goroutine for executing commands and reporting to your API
 // Note that a WaitGroup must be passed to functions by
 // pointer.
 func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
