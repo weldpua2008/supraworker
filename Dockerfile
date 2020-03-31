@@ -12,5 +12,6 @@ RUN go get -d -v ./... && \
 FROM alpine:latest
 WORKDIR /root/
 COPY --from=build-env /root/supraworker .
-
-CMD ["/root/supraworker","-d"]
+RUN adduser -D --shell /bin/bash hadoop && \
+    apk add curl bash
+CMD ["/root/supraworker","-v", "-t"]
