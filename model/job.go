@@ -339,17 +339,26 @@ func (j *Job) runcmd() error {
 	// Use shell wrapper
 	j.mu.Lock()
 	if j.UseSHELL {
-		shell := "bash"
+		shell := "sh"
 		args := []string{"-c", j.CMD}
 		switch runtime.GOOS {
 		case "windows":
 			shell = "powershell.exe"
-			ps, err := exec.LookPath("powershell.exe")
-			if err != nil {
-				log.Tracef("Can't fetch powershell %s", err)
+			if ps, err := exec.LookPath("powershell.exe"); err == nil {
+				args = []string{"-NoProfile", "-NonInteractive", j.CMD}
 				shell = ps
+
+			} else if bash, err := exec.LookPath("bash.exe"); err == nil {
+				shell = bash
+			} else {
+				log.Tracef("Can't fetch powershell nor bash, got %s", err)
 			}
-			args = []string{"-NoProfile", "-NonInteractive", j.CMD}
+
+		default:
+			if bash, err := exec.LookPath("bash"); err == nil {
+				shell = bash
+			}
+
 		}
 		j.cmd = execCommandContext(ctx, shell, args...)
 	} else {
@@ -363,11 +372,13 @@ func (j *Job) runcmd() error {
 	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
+		j.AppendLogStream([]string{fmt.Sprintf("cmd.StdoutPipe %s\n", err)})
 		return fmt.Errorf("cmd.StdoutPipe, %s", err)
 	}
 
 	stderr, err := j.cmd.StderrPipe()
 	if err != nil {
+		j.AppendLogStream([]string{fmt.Sprintf("cmd.StderrPipe %s\n", err)})
 		return fmt.Errorf("cmd.StderrPipe, %s", err)
 	}
 	err = j.cmd.Start()
@@ -375,6 +386,7 @@ func (j *Job) runcmd() error {
 	j.updateStatus(JOB_STATUS_IN_PROGRESS)
 	j.mu.Unlock()
 	if err != nil {
+		j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
 		return fmt.Errorf("cmd.Start, %s", err)
 	}
 	notifyStdoutSent := make(chan bool)
@@ -435,6 +447,7 @@ func (j *Job) runcmd() error {
 	}
 	if exitCode != 0 {
 		err = fmt.Errorf("exit code '%d'", exitCode)
+		j.AppendLogStream([]string{fmt.Sprintf("%s\n", err)})
 		j.exitError = err
 	}
 	if err == nil {
@@ -450,7 +463,7 @@ func (j *Job) runcmd() error {
 	if err == nil && j.Status == JOB_STATUS_CANCELED {
 		err = fmt.Errorf("return error for Canceled Job")
 	}
-	log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
+	// log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
 	return err
 }
 
