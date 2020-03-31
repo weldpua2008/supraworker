@@ -38,6 +38,9 @@ type ApiOperations struct {
 	Update UrlConf `mapstructure:"update"` // defines how to update item
 	Unlock UrlConf `mapstructure:"unlock"` // defines how to unlock item
 	Finish UrlConf `mapstructure:"finish"` // defines how to finish item
+	Failed UrlConf `mapstructure:"failed"` // defines how to update on failed
+	Cancel UrlConf `mapstructure:"cancel"` // defines how to update on cancel
+
 }
 
 type UrlConf struct {
