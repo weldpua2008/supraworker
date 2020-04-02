@@ -56,9 +56,10 @@ func DoJobApiCall(ctx context.Context, params map[string]string, stage string) (
 		jsonStr, err := json.Marshal(&params)
 
 		if err != nil {
+			log.Trace(fmt.Sprintf("\nFailed to marshal request %s  to %s \nwith %s\n", method, url, jsonStr))
+
 			return fmt.Errorf("Failed to marshal request due %s", err), nil
 		}
-		log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", method, url, jsonStr))
 		// req, err = http.NewRequestWithContext(localctx,
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(jsonStr))
 
@@ -82,7 +83,6 @@ func DoJobApiCall(ctx context.Context, params map[string]string, stage string) (
 	if err != nil {
 		return fmt.Errorf("error read response body got %s", err), nil
 	}
-	log.Tracef(" got body %s", body)
 	err = json.Unmarshal(body, &rawResponseArray)
 	if err != nil {
 		err = json.Unmarshal(body, &rawResponse)
@@ -125,7 +125,7 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 		if err != nil {
 			return fmt.Errorf("Failed to marshal request due %s", err), nil
 		}
-		log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", method, url, jsonStr))
+		// log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", method, url, jsonStr))
 		// req, err = http.NewRequestWithContext(localctx,
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(jsonStr))
 
@@ -142,18 +142,20 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 		return fmt.Errorf("Failed to send request due %s", err), nil
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+	if body, err := ioutil.ReadAll(resp.Body); err == nil {
+		if resp.StatusCode > 202 {
+			log.Tracef("StatusCode %d Response %s", resp.StatusCode, body)
+		}
+		if err = json.Unmarshal(body, &rawResponseArray); err != nil {
+			if err = json.Unmarshal(body, &rawResponse); err != nil {
+				return fmt.Errorf("error Unmarshal response: %s due %s", body, err), nil
+			}
+			rawResponseArray = append(rawResponseArray, rawResponse)
+		}
+	} else {
 		return fmt.Errorf("error read response body got %s", err), nil
 	}
-	err = json.Unmarshal(body, &rawResponseArray)
-	if err != nil {
-		err = json.Unmarshal(body, &rawResponse)
-		if err != nil {
-			return fmt.Errorf("error Unmarshal response: %s due %s", body, err), nil
-		}
-		rawResponseArray = append(rawResponseArray, rawResponse)
-	}
+
 	return nil, rawResponseArray
 
 }

@@ -68,7 +68,7 @@ var rootCmd = &cobra.Command{
 		defer cancel() // cancel when we are getting the kill signal or exit
 		var wg sync.WaitGroup
 		jobs := make(chan *model.Job, 1)
-        log.Info(fmt.Sprintf("Starting Supraworker"))
+		log.Info(fmt.Sprintf("Starting Supraworker"))
 		go func() {
 			sig := <-sigs
 			log.Info(fmt.Sprintf("Shutting down - got %v signal", sig))

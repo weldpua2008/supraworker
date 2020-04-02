@@ -175,6 +175,8 @@ func (j *Job) Cancel() error {
 // Cancel job
 // update your API
 func (j *Job) Failed() error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	if !IsTerminalStatus(j.Status) {
 		log.Trace(fmt.Sprintf("Call Failed for Job %s", j.Id))
 
@@ -183,15 +185,18 @@ func (j *Job) Failed() error {
 				return fmt.Errorf("failed to kill process: %s", err)
 			}
 		}
-		j.mu.Lock()
-		defer j.mu.Unlock()
+
 		j.updateStatus(JOB_STATUS_ERROR)
+		log.Tracef("[FAILED] Job '%s' moved to state %s", j.Id, j.Status)
+
 		j.updatelastActivity()
-		stage := "failed"
-		params := j.GetAPIParams(stage)
-		if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
-			log.Tracef("failed to update api, got: %s and %s", result, err)
-		}
+	} else {
+		log.Tracef("[FAILED] Job '%s' is in terminal state to state %s", j.Id, j.Status)
+	}
+	stage := "failed"
+	params := j.GetAPIParams(stage)
+	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+		log.Tracef("failed to update api, got: %s and %s", result, err)
 	}
 	return nil
 }
@@ -265,6 +270,7 @@ func (j *Job) doNotify() {
 	}
 }
 
+// TODO: move to general API
 func (j *Job) doSendSteamBuf() error {
 	log.Tracef("doSendSteamBuf for '%v' len %v", j.Id, len(j.streamsBuf))
 	if len(j.streamsBuf) > 0 {
@@ -298,7 +304,7 @@ func (j *Job) doSendSteamBuf() error {
 			if err != nil {
 				return fmt.Errorf("Failed to prepare request '%v' due %s", j.Id, err)
 			}
-			log.Trace(fmt.Sprintf("New Streaming request %s  to %s from %s", StreamingAPIMethod, StreamingAPIURL, j.Id))
+			// log.Trace(fmt.Sprintf("New Streaming request %s  to %s from %s", StreamingAPIMethod, StreamingAPIURL, j.Id))
 
 			client := &http.Client{Timeout: time.Duration(15 * time.Second)}
 			resp, err := client.Do(req)
@@ -307,7 +313,9 @@ func (j *Job) doSendSteamBuf() error {
 			}
 			defer resp.Body.Close()
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
-				log.Tracef("Response for '%v' %s", j.Id, body)
+				if resp.StatusCode > 202 {
+					log.Tracef("Response for '%v' %s", j.Id, body)
+				}
 			}
 
 		} else {
@@ -385,6 +393,13 @@ func (j *Job) runcmd() error {
 	j.mu.Lock()
 	j.updateStatus(JOB_STATUS_IN_PROGRESS)
 	j.mu.Unlock()
+	// update API
+	stage := "run"
+	params := j.GetAPIParams(stage)
+	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+		log.Tracef("failed to update api, got: %s and %s", result, err)
+	}
+
 	if err != nil {
 		j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
 		return fmt.Errorf("cmd.Start, %s", err)
@@ -485,11 +500,9 @@ func (j *Job) Run() error {
 		} else {
 			j.updateStatus(JOB_STATUS_ERROR)
 		}
-	}
-	stage := "run"
-	params := j.GetAPIParams(stage)
-	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
-		log.Tracef("failed to update api, got: %s and %s", result, err)
+		log.Tracef("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
+	} else {
+		log.Tracef("[RUN] Job '%s' is in terminal state to state %s", j.Id, j.Status)
 	}
 	// <-j.notifyLogSent
 	return err
