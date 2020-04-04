@@ -1,15 +1,15 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/spf13/viper"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-	// "github.com/spf13/viper"
-	// "bytes"
 )
 
 func TestHelperProcess(t *testing.T) {
@@ -30,11 +30,13 @@ func TestTerminalStatus(t *testing.T) {
 }
 
 func TestStreamApi(t *testing.T) {
-	want := "{\"job_uid\":\"job-testing.(*common).Name-fm\",\"run_uid\":\"1\",\"extra_run_id\":\"1\",\"msg\":\"'S'\\n\"}"
+	// want := "{\"job_uid\":\"job-testing.(*common).Name-fm\",\"run_uid\":\"1\",\"extra_run_id\":\"1\",\"msg\":\"'S'\\n\"}"
+	want := "{\"job_uid\":\"job_uid\",\"msg\":\"'S'\\n\",\"run_uid\":\"1\"}"
 	var got string
 	notifyStdoutSent := make(chan bool)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
+		fmt.Fprintln(w, "{}")
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			t.Errorf("ReadAll %s", err)
@@ -49,17 +51,22 @@ func TestStreamApi(t *testing.T) {
 	}()
 	// cmdtest.StartTrace()
 	StreamingAPIURL = srv.URL
-	// viper.SetConfigType("yaml")
-	// var yamlExample = []byte(`
-	// logs:
-	//   update:
-	//     url:  "`+srv.URL+`"
-	//     method: POST
+	viper.SetConfigType("yaml")
+	var yamlExample = []byte(`
+    jobs:
+      logstream: &update
+        url: "` + srv.URL + `"
+        method: post
+        params:
+          "job_uid": "job_uid"
+          "run_uid": "1"
+    `)
 	//
+	// var yamlExample = []byte(`
 	// jobs:
 	//   run: &run
 	//     url: "`+srv.URL+`"
-	//     method: get
+	//     method: post
 	//   stream:
 	//         <<: *run
 	//   cancelation:
@@ -73,9 +80,9 @@ func TestStreamApi(t *testing.T) {
 	//   cancel: &cancel
 	//     <<: *run
 	// `)
-	// viper.ReadConfig(bytes.NewBuffer(yamlExample))
-
-	log.Trace(fmt.Sprintf("StreamingAPIURL  %s", StreamingAPIURL))
+	if err := viper.ReadConfig(bytes.NewBuffer(yamlExample)); err != nil {
+		t.Errorf("Can't read config: %v\n", err)
+	}
 
 	job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo S&&exit 0"))
 	job.StreamInterval = 1 * time.Millisecond

@@ -39,7 +39,7 @@ func useCmdAsIs(CMD string) bool {
 }
 
 func urlProvided(stage string) bool {
-	url := viper.GetString(fmt.Sprintf("jobs.%s.url", stage))
+	url := viper.GetString(fmt.Sprintf("%s.url", stage))
 	if len(url) < 1 {
 		return false
 	}

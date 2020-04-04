@@ -99,6 +99,7 @@ var rootCmd = &cobra.Command{
 		})
 
 		go job.StartGenerateJobs(jobs, ctx, api_delay_sec)
+		go model.StartHeartBeat(ctx, api_delay_sec)
 		for w := 1; w <= numWorkers; w++ {
 			wg.Add(1)
 			go worker.StartWorker(w, jobs, &wg)

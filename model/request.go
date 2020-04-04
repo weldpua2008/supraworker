@@ -17,10 +17,25 @@ import (
 	config "github.com/weldpua2008/supraworker/config"
 )
 
+// GetAPIParamsFromSection of the configuration
 func GetAPIParamsFromSection(stage string) map[string]string {
+	return GetParamsFromSection(stage, "params")
+}
 
+// GetParamsFromSection from stage & with sub-param
+// Example stage = `jobs.logstream` and param `params` in the following config:
+// with `GetParamsFromSection("jobs.logstream", "params")`
+// var yamlExample = []byte(`
+// jobs:
+//   logstream: &update
+//     url: "localhost"
+//     method: post
+//     params:
+//       "job_uid": "job_uid"
+//       "run_uid": "1"
+func GetParamsFromSection(stage string, param string) map[string]string {
 	c := make(map[string]string)
-	params := viper.GetStringMapString(fmt.Sprintf("jobs.%s.params", stage))
+	params := viper.GetStringMapString(fmt.Sprintf("%s.%s", stage, param))
 	for k, v := range params {
 		var tpl_bytes bytes.Buffer
 		tpl := template.Must(template.New("params").Parse(v))
@@ -35,36 +50,25 @@ func GetAPIParamsFromSection(stage string) map[string]string {
 }
 
 // DoJobApiCall for the jobs stages
+// TODO: add custom headers
 func DoJobApiCall(ctx context.Context, params map[string]string, stage string) (error, []map[string]interface{}) {
-
-	// localctx, cancel := context.WithCancel(ctx)
-	// defer cancel()
 	var rawResponseArray []map[string]interface{}
-
-	url := viper.GetString(fmt.Sprintf("jobs.%s.url", stage))
+	url := viper.GetString(fmt.Sprintf("%s.url", stage))
 	if len(url) < 1 {
 		return fmt.Errorf("empty url on stage %s", stage), rawResponseArray
 	}
 	method := chooseHttpMethod(viper.GetString(fmt.Sprintf("jobs.%s.method", stage)), "POST")
-
 	var rawResponse map[string]interface{}
-
 	var req *http.Request
 	var err error
-
 	if len(params) > 0 {
 		jsonStr, err := json.Marshal(&params)
-
 		if err != nil {
 			log.Trace(fmt.Sprintf("\nFailed to marshal request %s  to %s \nwith %s\n", method, url, jsonStr))
-
 			return fmt.Errorf("Failed to marshal request due %s", err), nil
 		}
-		// req, err = http.NewRequestWithContext(localctx,
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(jsonStr))
-
 	} else {
-		// req, err = http.NewRequestWithContext(localctx,
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
@@ -97,13 +101,9 @@ func DoJobApiCall(ctx context.Context, params map[string]string, stage string) (
 
 // GetNewJobs fetch from your API the jobs for execution
 func NewRemoteApiRequest(ctx context.Context, section string, method string, url string) (error, []map[string]interface{}) {
-
-	// localctx, cancel := context.WithCancel(ctx)
-	// defer cancel()
 	var rawResponseArray []map[string]interface{}
 	var rawResponse map[string]interface{}
 
-	// c := NewApiJobRequest()
 	t := viper.GetStringMapString(section)
 	c := make(map[string]string)
 	for k, v := range t {
@@ -114,23 +114,17 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 			log.Warn("executing template:", err)
 		}
 		c[k] = tpl_bytes.String()
-		// log.Info(fmt.Sprintf("%s -> %s\n", k, tpl_bytes.String()))
 	}
 	var req *http.Request
 	var err error
-
 	if len(c) > 0 {
 		jsonStr, err := json.Marshal(&c)
 
 		if err != nil {
 			return fmt.Errorf("Failed to marshal request due %s", err), nil
 		}
-		// log.Trace(fmt.Sprintf("New Job request %s  to %s \nwith %s", method, url, jsonStr))
-		// req, err = http.NewRequestWithContext(localctx,
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(jsonStr))
-
 	} else {
-		// req, err = http.NewRequestWithContext(localctx,
 		req, err = http.NewRequest(method, url, nil)
 	}
 	req.Header.Set("Content-Type", "application/json")

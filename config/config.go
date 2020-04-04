@@ -23,10 +23,14 @@ const (
 
 // top level Configuration structure
 type Config struct {
-	ClientId        string        `mapstructure:"clientId"`
-	JobsAPI         ApiOperations `mapstructure:"jobs"`
-	LogsAPI         ApiOperations `mapstructure:"logs"`
-	CallAPIDelaySec int           `mapstructure:"api_delay_sec"`
+	// Indentification for the process
+	ClientId string `mapstructure:"clientId"`
+	// delay between API calls to prevent Denial-of-service
+	CallAPIDelaySec int `mapstructure:"api_delay_sec"`
+	// represent API for Jobs
+	JobsAPI ApiOperations `mapstructure:"jobs"`
+	// LogsAPI         ApiOperations `mapstructure:"logs"`
+	HeartBeat ApiOperations `mapstructure:"heartbeat"`
 }
 
 type ApiOperations struct {
