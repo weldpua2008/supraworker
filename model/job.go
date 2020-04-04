@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -230,9 +231,11 @@ func (j *Job) quotaHit() bool {
 func (j *Job) resetCounterLoop(after time.Duration) {
 	ticker := time.NewTicker(after)
 	tickerTimeInterval := time.NewTicker(2 * after)
+	tickerSlowLogsInterval := time.NewTicker(10 * after)
 	defer func() {
 		ticker.Stop()
 		tickerTimeInterval.Stop()
+		tickerSlowLogsInterval.Stop()
 		close(j.notifyLogSent)
 	}()
 	for {
@@ -259,6 +262,9 @@ func (j *Job) resetCounterLoop(after time.Duration) {
 			j.stremMu.Lock()
 			j.timeQuote = true
 			j.stremMu.Unlock()
+		// flush Buffer for slow logs
+		case <-tickerSlowLogsInterval.C:
+			j.doSendSteamBuf()
 		}
 	}
 }
@@ -270,14 +276,28 @@ func (j *Job) doNotify() {
 	}
 }
 
+// FlushSteamsBuffer
+func (j *Job) FlushSteamsBuffer() error {
+	return j.doSendSteamBuf()
+}
+
 // TODO: move to general API
 func (j *Job) doSendSteamBuf() error {
-	log.Tracef("doSendSteamBuf for '%v' len %v", j.Id, len(j.streamsBuf))
 	if len(j.streamsBuf) > 0 {
 		j.stremMu.Lock()
+		// log.Tracef("doSendSteamBuf for '%v' len '%v' %v\n ", j.Id, len(j.streamsBuf),j.streamsBuf)
 		defer j.stremMu.Unlock()
 		streamsReader := strings.NewReader(strings.Join(j.streamsBuf, ""))
-		if len(StreamingAPIURL) > 0 {
+		// update API
+		stage := "logstream"
+		params := j.GetAPIParams(stage)
+		if urlProvided(stage) {
+			// log.Tracef("Using DoJobApiCall for Streaming")
+			params["msg"] = strings.Join(j.streamsBuf, "")
+			if errApi, result := DoJobApiCall(j.ctx, params, stage); errApi != nil {
+				log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
+			}
+		} else if len(StreamingAPIURL) > 0 {
 			c := struct {
 				Job_uid      string `json:"job_uid"`
 				Run_uid      string `json:"run_uid"`
@@ -313,15 +333,15 @@ func (j *Job) doSendSteamBuf() error {
 			}
 			defer resp.Body.Close()
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
-				if resp.StatusCode > 202 {
-					log.Tracef("Response for '%v' %s", j.Id, body)
+				if (resp.StatusCode > 202) || (resp.StatusCode < 200) {
+					log.Tracef("Response HTTP code '%d' for job id '%v' body %s", resp.StatusCode, j.Id, body)
 				}
 			}
 
 		} else {
 			var buf bytes.Buffer
 			buf.ReadFrom(streamsReader)
-			fmt.Println(buf.String())
+			fmt.Printf("Job '%s': %s\n", j.Id, buf.String())
 		}
 		j.streamsBuf = nil
 
@@ -346,11 +366,18 @@ func (j *Job) runcmd() error {
 	defer cancel()
 	// Use shell wrapper
 	j.mu.Lock()
-	if j.UseSHELL {
+	cmd_splitted := strings.Fields(j.CMD)
+	defaultPath := "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	if useCmdAsIs(j.CMD) {
+		j.cmd = execCommandContext(ctx, cmd_splitted[0], cmd_splitted[1:]...)
+
+	} else if j.UseSHELL {
 		shell := "sh"
 		args := []string{"-c", j.CMD}
 		switch runtime.GOOS {
 		case "windows":
+			defaultPath = "%SystemRoot%\\system32;%SystemRoot%;%SystemRoot%\\System32\\Wbem"
+
 			shell = "powershell.exe"
 			if ps, err := exec.LookPath("powershell.exe"); err == nil {
 				args = []string{"-NoProfile", "-NonInteractive", j.CMD}
@@ -359,7 +386,7 @@ func (j *Job) runcmd() error {
 			} else if bash, err := exec.LookPath("bash.exe"); err == nil {
 				shell = bash
 			} else {
-				log.Tracef("Can't fetch powershell nor bash, got %s", err)
+				log.Tracef("Can't fetch powershell nor bash, got %s\n", err)
 			}
 
 		default:
@@ -370,14 +397,28 @@ func (j *Job) runcmd() error {
 		}
 		j.cmd = execCommandContext(ctx, shell, args...)
 	} else {
-		j.cmd = execCommandContext(ctx, strings.Fields(j.CMD)[0], strings.Fields(j.CMD)[1:]...)
+		j.cmd = execCommandContext(ctx, cmd_splitted[0], cmd_splitted[1:]...)
 	}
-	if len(j.CmdENV) > 0 {
-		j.cmd.Env = j.CmdENV
+
+	mergedENV := append(j.CmdENV, os.Environ()...)
+	mergedENV = append(mergedENV, defaultPath)
+	unique := make(map[string]bool, len(mergedENV))
+
+	for indx := range mergedENV {
+		if len(strings.Split(mergedENV[indx], "=")) != 2 {
+			continue
+		}
+		k := strings.Split(mergedENV[indx], "=")[0]
+		if _, ok := unique[k]; !ok {
+			j.cmd.Env = append(j.cmd.Env, mergedENV[indx])
+			unique[k] = true
+		}
+		// if strings.HasPrefix(j.cmd.Env[indx],"PATH="){
+		//     j.cmd.Env[indx]
+		// }
 	}
 	j.mu.Unlock()
 
-	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
 		j.AppendLogStream([]string{fmt.Sprintf("cmd.StdoutPipe %s\n", err)})
@@ -389,6 +430,8 @@ func (j *Job) runcmd() error {
 		j.AppendLogStream([]string{fmt.Sprintf("cmd.StderrPipe %s\n", err)})
 		return fmt.Errorf("cmd.StderrPipe, %s", err)
 	}
+
+	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
 	err = j.cmd.Start()
 	j.mu.Lock()
 	j.updateStatus(JOB_STATUS_IN_PROGRESS)
@@ -396,10 +439,9 @@ func (j *Job) runcmd() error {
 	// update API
 	stage := "run"
 	params := j.GetAPIParams(stage)
-	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
-		log.Tracef("failed to update api, got: %s and %s", result, err)
+	if errApi, result := DoJobApiCall(j.ctx, params, stage); errApi != nil {
+		log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
 	}
-
 	if err != nil {
 		j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
 		return fmt.Errorf("cmd.Start, %s", err)
@@ -420,6 +462,7 @@ func (j *Job) runcmd() error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			msg := scanner.Text()
+			log.Tracef("stdout: %s\n", msg)
 			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
 	}()
@@ -432,9 +475,13 @@ func (j *Job) runcmd() error {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			msg := scanner.Text()
+			log.Tracef("stderr: %s\n", msg)
 			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
 	}()
+
+	<-notifyStdoutSent
+	<-notifyStderrSent
 
 	// The returned error is nil if the command runs, has
 	// no problems copying stdin, stdout, and stderr,
@@ -444,8 +491,6 @@ func (j *Job) runcmd() error {
 		log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
 	}
 
-	<-notifyStdoutSent
-	<-notifyStderrSent
 	// signal that we've read all logs
 	j.notifyStopStreams <- struct{}{}
 	status := j.cmd.ProcessState.Sys()

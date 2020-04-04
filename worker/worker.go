@@ -29,10 +29,12 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 		log.Trace(fmt.Sprintf("Worker %v received Job %v adress %p", id, j.Id, &j))
 		if err := j.Run(); err != nil {
 			log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
+			j.FlushSteamsBuffer()
 			j.Failed()
 		} else {
 			dur := time.Now().Sub(j.StartAt)
 			log.Debug(fmt.Sprintf("Job %v finished in %v", j.Id, dur))
+			j.FlushSteamsBuffer()
 			j.Finish()
 		}
 		job.JobsRegistry.Delete(j.StoreKey())

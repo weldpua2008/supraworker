@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	// "github.com/spf13/viper"
+	// "bytes"
 )
 
 func TestHelperProcess(t *testing.T) {
@@ -45,7 +47,34 @@ func TestStreamApi(t *testing.T) {
 		StreamingAPIURL = ""
 		restoreLevel()
 	}()
+	// cmdtest.StartTrace()
 	StreamingAPIURL = srv.URL
+	// viper.SetConfigType("yaml")
+	// var yamlExample = []byte(`
+	// logs:
+	//   update:
+	//     url:  "`+srv.URL+`"
+	//     method: POST
+	//
+	// jobs:
+	//   run: &run
+	//     url: "`+srv.URL+`"
+	//     method: get
+	//   stream:
+	//         <<: *run
+	//   cancelation:
+	//       <<: *run
+	//   get:
+	//       <<: *run
+	//   finish: &finish
+	//     <<: *run
+	//   failed: &filed
+	//     <<: *run
+	//   cancel: &cancel
+	//     <<: *run
+	// `)
+	// viper.ReadConfig(bytes.NewBuffer(yamlExample))
+
 	log.Trace(fmt.Sprintf("StreamingAPIURL  %s", StreamingAPIURL))
 
 	job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo S&&exit 0"))
@@ -54,7 +83,7 @@ func TestStreamApi(t *testing.T) {
 	job.RunUID = "1"
 	err := job.Run()
 	if err != nil {
-		t.Errorf("Expected no error in %s, got %v", cmdtest.GetFunctionName(t.Name), err)
+		t.Errorf("Expected no error in %s, got '%v'\n", cmdtest.GetFunctionName(t.Name), err)
 	}
 	select {
 	case <-notifyStdoutSent:
@@ -64,7 +93,7 @@ func TestStreamApi(t *testing.T) {
 	}
 
 	if job.Status != JOB_STATUS_SUCCESS {
-		t.Errorf("Expected %s, got %s", JOB_STATUS_SUCCESS, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_SUCCESS, job.Status)
 	}
 
 	if got != want {
@@ -77,7 +106,7 @@ func TestExecuteJobSuccess(t *testing.T) {
 	err := job.Run()
 
 	if err != nil {
-		t.Errorf("Expected no error in %s, got %v", cmdtest.GetFunctionName(t.Name), err)
+		t.Errorf("Expected no error in %s, got %v\n", cmdtest.GetFunctionName(t.Name), err)
 	}
 	if job.Status != JOB_STATUS_SUCCESS {
 		t.Errorf("Expected %s, got %s", JOB_STATUS_SUCCESS, job.Status)
@@ -89,10 +118,10 @@ func TestExecuteJobError(t *testing.T) {
 	err := job.Run()
 
 	if err == nil {
-		t.Errorf("Expected  error, got %v", err)
+		t.Errorf("Expected  error, got %v\n", err)
 	}
 	if job.Status != JOB_STATUS_ERROR {
-		t.Errorf("Expected %s, got %s", JOB_STATUS_ERROR, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_ERROR, job.Status)
 	}
 
 }
@@ -110,7 +139,7 @@ func TestExecuteJobCancel(t *testing.T) {
 		err := job.Run()
 		if err == nil {
 			done <- true
-			t.Errorf("Expected  error for job %v\n, got %v", job, err)
+			t.Errorf("Expected  error for job %v\n, got %v\n", job, err)
 		}
 		// log.Info(err)
 		// log.Info("TestExecuteJobCancel finished")
@@ -128,28 +157,28 @@ func TestExecuteJobCancel(t *testing.T) {
 	job.Cancel()
 	<-done
 	if job.Status != JOB_STATUS_CANCELED {
-		t.Errorf("Expected %s, got %s", JOB_STATUS_CANCELED, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.Status)
 	}
 }
 
 func TestJobFailed(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_ERROR {
-		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_ERROR)
+		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_ERROR)
 	}
 	job.Failed()
 	got := job.Status
 	want := JOB_STATUS_ERROR
 
 	if got != want {
-		t.Errorf("got '%s', want '%s'", got, want)
+		t.Errorf("got '%s', want '%s'\n", got, want)
 	}
 }
 
 func TestJobFinished(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_SUCCESS {
-		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_SUCCESS)
+		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_SUCCESS)
 	}
 
 	job.Finish()
@@ -157,21 +186,21 @@ func TestJobFinished(t *testing.T) {
 	want := JOB_STATUS_SUCCESS
 
 	if got != want {
-		t.Errorf("got '%s', want '%s'", got, want)
+		t.Errorf("got '%s', want '%s'\n", got, want)
 	}
 }
 
 func TestJobCancel(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_CANCELED {
-		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_CANCELED)
+		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_CANCELED)
 	}
 	job.Cancel()
 	got := job.Status
 	want := JOB_STATUS_CANCELED
 
 	if got != want {
-		t.Errorf("got '%s', want '%s'", got, want)
+		t.Errorf("got '%s', want '%s'\n", got, want)
 	}
 }
 
@@ -182,14 +211,14 @@ func TestJobUpdateActivity(t *testing.T) {
 	want := job.LastActivityAt
 
 	if got == want {
-		t.Errorf("got '%s' == want '%s'", got, want)
+		t.Errorf("got '%s' == want '%s'\n", got, want)
 	}
 }
 
 func TestJobUpdateStatus(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.Status == JOB_STATUS_SUCCESS {
-		t.Errorf("job.Status '%s' same '%s'", job.Status, JOB_STATUS_PENDING)
+		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_PENDING)
 	}
 	job.updateStatus(JOB_STATUS_SUCCESS)
 	got := job.Status
@@ -197,6 +226,6 @@ func TestJobUpdateStatus(t *testing.T) {
 	want := JOB_STATUS_SUCCESS
 
 	if got != want {
-		t.Errorf("got '%s', want '%s'", got, want)
+		t.Errorf("got '%s', want '%s'\n", got, want)
 	}
 }

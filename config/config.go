@@ -33,6 +33,8 @@ type ApiOperations struct {
 	Run         UrlConf `mapstructure:"run"`         // defines how to run item
 	Cancelation UrlConf `mapstructure:"cancelation"` // defines how to cancel item
 
+	LogStreams UrlConf `mapstructure:"logstream"` // defines how to get item
+
 	Get    UrlConf `mapstructure:"get"`    // defines how to get item
 	Lock   UrlConf `mapstructure:"lock"`   // defines how to lock item
 	Update UrlConf `mapstructure:"update"` // defines how to update item
