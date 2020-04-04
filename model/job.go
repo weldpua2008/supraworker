@@ -462,7 +462,7 @@ func (j *Job) runcmd() error {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			msg := scanner.Text()
-			log.Tracef("stdout: %s\n", msg)
+			// log.Tracef("stdout: %s\n", msg)
 			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
 	}()
@@ -475,7 +475,7 @@ func (j *Job) runcmd() error {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			msg := scanner.Text()
-			log.Tracef("stderr: %s\n", msg)
+			// log.Tracef("stderr: %s\n", msg)
 			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
 	}()
