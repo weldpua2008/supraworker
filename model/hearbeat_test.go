@@ -53,7 +53,6 @@ func TestHeartBeatApi(t *testing.T) {
         method: post
         params:
           "id": "` + want + `"
-
     `)
 
 	if err := viper.ReadConfig(bytes.NewBuffer(yamlExample)); err != nil {

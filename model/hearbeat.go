@@ -30,7 +30,7 @@ func StartHeartBeat(ctx context.Context, interval time.Duration) error {
 				stage := "heartbeat.update"
 				if urlProvided(stage) {
 					params := GetAPIParamsFromSection(stage)
-					if errApi, result := DoJobApiCall(ctx, params, stage); errApi != nil {
+					if errApi, result := DoApiCall(ctx, params, stage); errApi != nil {
 						log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
 						hb_failed += 1
 					}

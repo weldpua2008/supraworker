@@ -172,7 +172,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 
 				stage := "jobs.cancelation"
 				params := model.GetAPIParamsFromSection(stage)
-				if err, jobsCancelationData := model.DoJobApiCall(ctx, params, stage); err != nil {
+				if err, jobsCancelationData := model.DoApiCall(ctx, params, stage); err != nil {
 					log.Tracef("failed to update api, got: %s and %s", jobsCancelationData, err)
 				} else {
 

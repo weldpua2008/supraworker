@@ -105,8 +105,9 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 	for k, v := range params {
 		c[k] = v
 	}
+	resendParamsKeys := GetSliceParamsFromSection(stage, "resend-params")
+	// log.Tracef(" GetAPIParams(%s) params params %v\nresend-params %v\n", stage,params,resendParamsKeys)
 
-	resendParamsKeys := GetParamsFromSection(stage, "resend-params")
 	for _, resandParamKey := range resendParamsKeys {
 		for _, rawVal := range j.RawParams {
 			if val, ok := rawVal[resandParamKey]; ok {
@@ -114,6 +115,7 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 			}
 		}
 	}
+	// log.Tracef("GetAPIParams(%s ) c:  %v \n",stage,c)
 
 	return c
 }
@@ -135,7 +137,7 @@ func (j *Job) Cancel() error {
 		j.updatelastActivity()
 		stage := "jobs.cancel"
 		params := j.GetAPIParams(stage)
-		if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+		if err, result := DoApiCall(j.ctx, params, stage); err != nil {
 			log.Tracef("failed to update api, got: %s and %s", result, err)
 		}
 
@@ -168,7 +170,7 @@ func (j *Job) Failed() error {
 	}
 	stage := "jobs.failed"
 	params := j.GetAPIParams(stage)
-	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+	if err, result := DoApiCall(j.ctx, params, stage); err != nil {
 		log.Tracef("failed to update api, got: %s and %s", result, err)
 	}
 	return nil
@@ -265,9 +267,9 @@ func (j *Job) doSendSteamBuf() error {
 		stage := "jobs.logstream"
 		params := j.GetAPIParams(stage)
 		if urlProvided(stage) {
-			// log.Tracef("Using DoJobApiCall for Streaming")
+			// log.Tracef("Using DoApiCall for Streaming")
 			params["msg"] = strings.Join(j.streamsBuf, "")
-			if errApi, result := DoJobApiCall(j.ctx, params, stage); errApi != nil {
+			if errApi, result := DoApiCall(j.ctx, params, stage); errApi != nil {
 				log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
 			}
 
@@ -374,7 +376,7 @@ func (j *Job) runcmd() error {
 	// update API
 	stage := "jobs.run"
 	params := j.GetAPIParams(stage)
-	if errApi, result := DoJobApiCall(j.ctx, params, stage); errApi != nil {
+	if errApi, result := DoApiCall(j.ctx, params, stage); errApi != nil {
 		log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
 	}
 	if err != nil {
@@ -497,7 +499,7 @@ func (j *Job) Finish() error {
 	j.updateStatus(JOB_STATUS_SUCCESS)
 	stage := "jobs.finish"
 	params := j.GetAPIParams(stage)
-	if err, result := DoJobApiCall(j.ctx, params, stage); err != nil {
+	if err, result := DoApiCall(j.ctx, params, stage); err != nil {
 		log.Tracef("failed to update api, got: %s and %s", result, err)
 	}
 

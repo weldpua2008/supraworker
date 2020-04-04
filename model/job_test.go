@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+
+// TODO:
+// Add tests with different HTTP methods
+
+
 func TestHelperProcess(t *testing.T) {
 	cmdtest.TestHelperProcess(t)
 }
@@ -46,11 +51,11 @@ func TestStreamApi(t *testing.T) {
 	}))
 	defer func() {
 		srv.Close()
-		StreamingAPIURL = ""
+		// StreamingAPIURL = ""
 		restoreLevel()
 	}()
 	// cmdtest.StartTrace()
-	StreamingAPIURL = srv.URL
+	// StreamingAPIURL = srv.URL
 	viper.SetConfigType("yaml")
 	var yamlExample = []byte(`
     jobs:
