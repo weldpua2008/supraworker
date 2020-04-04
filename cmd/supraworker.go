@@ -16,7 +16,7 @@ import (
 	// "bytes"
 	"context"
 	"github.com/sirupsen/logrus"
-	// config "github.com/weldpua2008/supraworker/config"
+	config "github.com/weldpua2008/supraworker/config"
 	job "github.com/weldpua2008/supraworker/job"
 	model "github.com/weldpua2008/supraworker/model"
 	worker "github.com/weldpua2008/supraworker/worker"
@@ -40,6 +40,7 @@ func init() {
 	// will be global for application.
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
 	rootCmd.PersistentFlags().BoolVarP(&traceFlag, "trace", "t", false, "trace")
+	rootCmd.PersistentFlags().StringVar(&config.ClientId, "clientId", "", "ClientId (default is supraworker)")
 
 	rootCmd.PersistentFlags().IntVarP(&numWorkers, "workers", "w", 5, "Number of workers")
 	// local flags, which will only run
@@ -92,10 +93,12 @@ var rootCmd = &cobra.Command{
 
 		// load config
 		model.ReinitializeConfig()
+		config.ReinitializeConfig()
 		viper.WatchConfig()
 		viper.OnConfigChange(func(e fsnotify.Event) {
 			log.Trace("Config file changed:", e.Name)
 			model.ReinitializeConfig()
+			config.ReinitializeConfig()
 		})
 
 		go job.StartGenerateJobs(jobs, ctx, api_delay_sec)

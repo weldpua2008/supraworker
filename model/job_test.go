@@ -12,10 +12,8 @@ import (
 	"time"
 )
 
-
 // TODO:
 // Add tests with different HTTP methods
-
 
 func TestHelperProcess(t *testing.T) {
 	cmdtest.TestHelperProcess(t)

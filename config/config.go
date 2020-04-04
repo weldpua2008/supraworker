@@ -58,8 +58,9 @@ type UrlConf struct {
 }
 
 var (
-	CfgFile string
-	C       Config = Config{
+	CfgFile  string
+	ClientId string
+	C        Config = Config{
 		CallAPIDelaySec: int(2),
 
 		// JobsAPI: UrlConf{
@@ -79,6 +80,16 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 
+}
+
+// ReinitializeConfig on load or file change
+func ReinitializeConfig() {
+	if len(ClientId) > 0 {
+		C.ClientId = ClientId
+	}
+	if len(C.ClientId) < 1 {
+		C.ClientId = "supraworker"
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

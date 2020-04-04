@@ -2,7 +2,7 @@
 
 The abstraction layer around jobs, allows pull a job from your API periodically, call-back your API, observe execution time and to control concurrent execution.
 
-It's responsible for getting the bash commands from your API running it, and streaming the logs back to your API. It also sends state updates to your API.
+It's responsible for getting the commands from your API, running commands, and streaming the logs back to your API. It also sends state updates to your API.
 
 ## Getting started
 
