@@ -31,6 +31,8 @@ type Config struct {
 	JobsAPI ApiOperations `mapstructure:"jobs"`
 	// LogsAPI         ApiOperations `mapstructure:"logs"`
 	HeartBeat ApiOperations `mapstructure:"heartbeat"`
+	// Config version
+	ConfigVersion string `mapstructure:"version"`
 }
 
 type ApiOperations struct {

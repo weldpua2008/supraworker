@@ -97,8 +97,6 @@ func TestGenerateJobs(t *testing.T) {
       get:
         url: "` + srv.URL + `"
         method: POST
-        headers:
-          "Content-type": "application/json"
     `)
 
 	viper.ReadConfig(bytes.NewBuffer(yamlExample))
