@@ -21,7 +21,7 @@ var GitCommit string
 
 const (
 	// The main version number
-	Version = "0.1.1"
+	Version = "0.1.2"
 
 	// A pre-release marker for the version
 	// such as "dev" (in development), "beta", "rc1", etc.
