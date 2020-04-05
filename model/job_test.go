@@ -138,7 +138,7 @@ func TestExecuteJobError(t *testing.T) {
 func TestExecuteJobCancel(t *testing.T) {
 	done := make(chan bool, 1)
 	started := make(chan bool, 1)
-	job := NewTestJob(fmt.Sprintf("job-TestExecuteJobCancel"), cmdtest.CMDForTest("echo v && sleep 100 && exit 0"))
+	job := NewTestJob("job-TestExecuteJobCancel", cmdtest.CMDForTest("echo v && sleep 100 && exit 0"))
 	job.TTR = 10000000
 
 	go func() {
@@ -164,7 +164,10 @@ func TestExecuteJobCancel(t *testing.T) {
 	}
 	// time.Sleep(10 * time.Millisecond)
 
-	job.Cancel()
+	if errUpdate := job.Cancel(); errUpdate != nil {
+		log.Tracef("failed cancel %s status '%s'", job.Id, job.Status)
+	}
+
 	<-done
 	if job.Status != JOB_STATUS_CANCELED {
 		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.Status)
@@ -176,7 +179,9 @@ func TestJobFailed(t *testing.T) {
 	if job.Status == JOB_STATUS_ERROR {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_ERROR)
 	}
-	job.Failed()
+	if errUpdate := job.Failed(); errUpdate != nil {
+		log.Tracef("failed Failed %s status '%s'", job.Id, job.Status)
+	}
 	got := job.Status
 	want := JOB_STATUS_ERROR
 
@@ -191,7 +196,10 @@ func TestJobFinished(t *testing.T) {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_SUCCESS)
 	}
 
-	job.Finish()
+	if errUpdate := job.Finish(); errUpdate != nil {
+		log.Tracef("failed Finish %s status '%s'", job.Id, job.Status)
+	}
+
 	got := job.Status
 	want := JOB_STATUS_SUCCESS
 
@@ -205,7 +213,10 @@ func TestJobCancel(t *testing.T) {
 	if job.Status == JOB_STATUS_CANCELED {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_CANCELED)
 	}
-	job.Cancel()
+	if errUpdate := job.Cancel(); errUpdate != nil {
+		log.Tracef("failed Cancel %s status '%s'", job.Id, job.Status)
+	}
+
 	got := job.Status
 	want := JOB_STATUS_CANCELED
 
@@ -230,7 +241,7 @@ func TestJobUpdateStatus(t *testing.T) {
 	if job.Status == JOB_STATUS_SUCCESS {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_PENDING)
 	}
-	job.updateStatus(JOB_STATUS_SUCCESS)
+	_ = job.updateStatus(JOB_STATUS_SUCCESS)
 	got := job.Status
 
 	want := JOB_STATUS_SUCCESS

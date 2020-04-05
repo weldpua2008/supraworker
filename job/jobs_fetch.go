@@ -123,7 +123,7 @@ func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.
 							continue
 						}
 
-						job := model.NewJob(fmt.Sprintf("%v", JobId), fmt.Sprintf("%s", CMD))
+						job := model.NewJob(fmt.Sprintf("%v", JobId), CMD)
 						job.RunUID = RunUID
 						job.ExtraRunUID = ExtraRunUID
 						job.RawParams = append(job.RawParams, jobResponse)

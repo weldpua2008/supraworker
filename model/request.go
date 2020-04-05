@@ -152,14 +152,17 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 	var req *http.Request
 	var err error
 	if len(c) > 0 {
-		jsonStr, err := json.Marshal(&c)
+		jsonStr, errMarsh := json.Marshal(&c)
 
-		if err != nil {
-			return fmt.Errorf("Failed to marshal request due %s", err), nil
+		if errMarsh != nil {
+			return fmt.Errorf("Failed to marshal request due %s", errMarsh), nil
 		}
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(jsonStr))
 	} else {
 		req, err = http.NewRequest(method, url, nil)
+	}
+	if err != nil {
+		return fmt.Errorf("Failed to create new request due %s", err), nil
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")

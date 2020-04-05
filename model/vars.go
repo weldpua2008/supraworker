@@ -2,12 +2,10 @@ package model
 
 import (
 	"github.com/sirupsen/logrus"
-	"os"
 	"os/exec"
 )
 
 var (
-	osGetEnv           = os.Getenv
 	execCommandContext = exec.CommandContext
 
 	// URL for pulling new jobs

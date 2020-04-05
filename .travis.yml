@@ -3,14 +3,21 @@ language: go
 go:
   - 1.12.x
 
+# Don't email me the results of the test runs.
+notifications:
+  email: false
+
 env:
   global:
     - PATH="$GOPATH/bin:$PATH"
     - RELEASES_PATH=/tmp/releases
 
+before_script:
+  - go install github.com/golangci/golangci-lint/cmd/golangci-lint
+
 script:
   - go test -bench= -test.v  ./...
-  # - golangci-lint run
+  - golangci-lint run
 
 before_deploy:
   # Set up git user name and tag this commit

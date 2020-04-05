@@ -29,13 +29,17 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 		log.Trace(fmt.Sprintf("Worker %v received Job %v adress %p", id, j.Id, &j))
 		if err := j.Run(); err != nil {
 			log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
-			j.FlushSteamsBuffer()
-			j.Failed()
+			if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
+				log.Tracef("Job %v failed to flush buffer due %v", j.Id, errFlushBuf)
+			}
+			_ = j.Failed()
 		} else {
-			dur := time.Now().Sub(j.StartAt)
-			log.Debug(fmt.Sprintf("Job %v finished in %v", j.Id, dur))
-			j.FlushSteamsBuffer()
-			j.Finish()
+			dur := time.Since(j.StartAt)
+			log.Debugf("Job %v finished in %v", j.Id, dur)
+			if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
+				log.Tracef("Job %v failed to flush buffer due %v", j.Id, errFlushBuf)
+			}
+			_ = j.Finish()
 		}
 		job.JobsRegistry.Delete(j.StoreKey())
 

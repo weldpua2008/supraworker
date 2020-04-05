@@ -40,8 +40,5 @@ func useCmdAsIs(CMD string) bool {
 
 func urlProvided(stage string) bool {
 	url := viper.GetString(fmt.Sprintf("%s.url", stage))
-	if len(url) < 1 {
-		return false
-	}
-	return true
+	return len(url) >= 1
 }

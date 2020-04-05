@@ -133,7 +133,10 @@ func (j *Job) Cancel() error {
 			}
 		}
 
-		j.updateStatus(JOB_STATUS_CANCELED)
+		if errUpdate := j.updateStatus(JOB_STATUS_CANCELED); errUpdate != nil {
+			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_CANCELED)
+
+		}
 		j.updatelastActivity()
 		stage := "jobs.cancel"
 		params := j.GetAPIParams(stage)
@@ -161,7 +164,10 @@ func (j *Job) Failed() error {
 			}
 		}
 
-		j.updateStatus(JOB_STATUS_ERROR)
+		if errUpdate := j.updateStatus(JOB_STATUS_ERROR); errUpdate != nil {
+			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
+
+		}
 		log.Tracef("[FAILED] Job '%s' moved to state %s", j.Id, j.Status)
 
 		j.updatelastActivity()
@@ -181,7 +187,7 @@ func (j *Job) Failed() error {
 func (j *Job) AppendLogStream(logStream []string) error {
 	if j.quotaHit() {
 		<-j.notify
-		j.doSendSteamBuf()
+		_ = j.doSendSteamBuf()
 	}
 	j.incrementCounter()
 	j.stremMu.Lock()
@@ -215,7 +221,7 @@ func (j *Job) resetCounterLoop(after time.Duration) {
 	for {
 		select {
 		case <-j.notifyStopStreams:
-			j.doSendSteamBuf()
+			_ = j.doSendSteamBuf()
 			j.notifyLogSent <- struct{}{}
 
 			log.Tracef("resetCounterLoop finished for '%v'", j.Id)
@@ -238,7 +244,7 @@ func (j *Job) resetCounterLoop(after time.Duration) {
 			j.stremMu.Unlock()
 		// flush Buffer for slow logs
 		case <-tickerSlowLogsInterval.C:
-			j.doSendSteamBuf()
+			_ = j.doSendSteamBuf()
 		}
 	}
 }
@@ -275,7 +281,9 @@ func (j *Job) doSendSteamBuf() error {
 
 		} else {
 			var buf bytes.Buffer
-			buf.ReadFrom(streamsReader)
+			if _, errReadFrom := buf.ReadFrom(streamsReader); errReadFrom != nil {
+				log.Tracef("buf.ReadFrom error %v\n", errReadFrom)
+			}
 			fmt.Printf("Job '%s': %s\n", j.Id, buf.String())
 		}
 		j.streamsBuf = nil
@@ -358,20 +366,22 @@ func (j *Job) runcmd() error {
 
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
-		j.AppendLogStream([]string{fmt.Sprintf("cmd.StdoutPipe %s\n", err)})
+		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.StdoutPipe %s\n", err)})
 		return fmt.Errorf("cmd.StdoutPipe, %s", err)
 	}
 
 	stderr, err := j.cmd.StderrPipe()
 	if err != nil {
-		j.AppendLogStream([]string{fmt.Sprintf("cmd.StderrPipe %s\n", err)})
+		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.StderrPipe %s\n", err)})
 		return fmt.Errorf("cmd.StderrPipe, %s", err)
 	}
 
 	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
 	err = j.cmd.Start()
 	j.mu.Lock()
-	j.updateStatus(JOB_STATUS_IN_PROGRESS)
+	if errUpdate := j.updateStatus(JOB_STATUS_IN_PROGRESS); errUpdate != nil {
+		log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_IN_PROGRESS)
+	}
 	j.mu.Unlock()
 	// update API
 	stage := "jobs.run"
@@ -380,7 +390,7 @@ func (j *Job) runcmd() error {
 		log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
 	}
 	if err != nil {
-		j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
+		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
 		return fmt.Errorf("cmd.Start, %s", err)
 	}
 	notifyStdoutSent := make(chan bool)
@@ -400,7 +410,7 @@ func (j *Job) runcmd() error {
 		for scanner.Scan() {
 			msg := scanner.Text()
 			// log.Tracef("stdout: %s\n", msg)
-			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
+			_ = j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
 	}()
 	// parse stderr
@@ -413,7 +423,7 @@ func (j *Job) runcmd() error {
 		for scanner.Scan() {
 			msg := scanner.Text()
 			// log.Tracef("stderr: %s\n", msg)
-			j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
+			_ = j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
 		}
 	}()
 
@@ -444,7 +454,7 @@ func (j *Job) runcmd() error {
 	}
 	if exitCode != 0 {
 		err = fmt.Errorf("exit code '%d'", exitCode)
-		j.AppendLogStream([]string{fmt.Sprintf("%s\n", err)})
+		_ = j.AppendLogStream([]string{fmt.Sprintf("%s\n", err)})
 		j.exitError = err
 	}
 	if err == nil {
@@ -477,10 +487,14 @@ func (j *Job) Run() error {
 	j.exitError = err
 	j.updatelastActivity()
 	if !IsTerminalStatus(j.Status) {
+		finalStatus := JOB_STATUS_ERROR
 		if err == nil {
-			j.updateStatus(JOB_STATUS_SUCCESS)
-		} else {
-			j.updateStatus(JOB_STATUS_ERROR)
+			finalStatus = JOB_STATUS_SUCCESS
+		}
+
+		if errUpdate := j.updateStatus(finalStatus); errUpdate != nil {
+			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, finalStatus)
+
 		}
 		log.Tracef("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
 	} else {
@@ -496,7 +510,9 @@ func (j *Job) Finish() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.updatelastActivity()
-	j.updateStatus(JOB_STATUS_SUCCESS)
+	if errUpdate := j.updateStatus(JOB_STATUS_SUCCESS); errUpdate != nil {
+		log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_SUCCESS)
+	}
 	stage := "jobs.finish"
 	params := j.GetAPIParams(stage)
 	if err, result := DoApiCall(j.ctx, params, stage); err != nil {

@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	log           = logrus.WithFields(logrus.Fields{"package": "model"})
+	// log           = logrus.WithFields(logrus.Fields{"package": "model"})
 	previousLevel logrus.Level
 )
 
@@ -123,7 +123,7 @@ func TestHelperProcess(t *testing.T) {
 	}
 
 	if (len(out) > 0) && (out != string(' ')) {
-		fmt.Fprintf(os.Stdout, fmt.Sprintf("'%v'", out))
+		fmt.Fprintf(os.Stdout, "'%v'", out)
 	}
 
 	os.Exit(exitCode)
