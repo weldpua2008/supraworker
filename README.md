@@ -50,11 +50,16 @@ jobs:
 
 ## Installing
 
+### Download automation
+* Download for Linux latest release
 ```bash
-$ go get github.com/weldpua2008/supraworker
+curl --silent -L  "https://api.github.com/repos/weldpua2008/supraworker/releases/latest"  \
+| jq --arg PLATFORM_ARCH "$(echo `uname -s`_amd| tr '[:upper:]' '[:lower:]')" -r '.assets[] | select(.name | contains($PLATFORM_ARCH)).browser_download_url' \
+| xargs -I % curl -sSL  % \
+| sudo tar --strip-components=1  -xzf  -
 ```
 
-### from source
+### Installing from source
 
 1. install [Go](http://golang.org) `v1.12+`
 1. clone this down into your `$GOPATH`
