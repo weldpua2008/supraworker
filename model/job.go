@@ -76,6 +76,13 @@ func (j *Job) StoreKey() string {
 	return StoreKey(j.Id, j.RunUID, j.ExtraRunUID)
 }
 
+// GetStatus get job status.
+func (j *Job) GetStatus() string {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+    return j.Status
+}
+
 // updatelastActivity for the Job
 func (j *Job) updatelastActivity() {
 	j.LastActivityAt = time.Now()
@@ -184,7 +191,7 @@ func (j *Job) Failed() error {
 	return nil
 }
 
-// AppendLogStream for job
+//  for job
 // update your API
 func (j *Job) AppendLogStream(logStream []string) error {
 	if j.quotaHit() {
@@ -266,10 +273,11 @@ func (j *Job) FlushSteamsBuffer() error {
 // doSendSteamBuf low-level functions which sends streams to the remote API
 // Send stream only if there is something
 func (j *Job) doSendSteamBuf() error {
+    j.stremMu.Lock()
+    defer j.stremMu.Unlock()
 	if len(j.streamsBuf) > 0 {
-		j.stremMu.Lock()
 		// log.Tracef("doSendSteamBuf for '%v' len '%v' %v\n ", j.Id, len(j.streamsBuf),j.streamsBuf)
-		defer j.stremMu.Unlock()
+
 		streamsReader := strings.NewReader(strings.Join(j.streamsBuf, ""))
 		// update API
 		stage := "jobs.logstream"

@@ -102,7 +102,7 @@ func TestStreamApi(t *testing.T) {
 		t.Errorf("timed out")
 	}
 
-	if job.Status != JOB_STATUS_SUCCESS {
+	if job.GetStatus() != JOB_STATUS_SUCCESS {
 		t.Errorf("Expected %s, got %s\n", JOB_STATUS_SUCCESS, job.Status)
 	}
 
@@ -118,7 +118,7 @@ func TestExecuteJobSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error in %s, got %v\n", cmdtest.GetFunctionName(t.Name), err)
 	}
-	if job.Status != JOB_STATUS_SUCCESS {
+	if job.GetStatus() != JOB_STATUS_SUCCESS {
 		t.Errorf("Expected %s, got %s", JOB_STATUS_SUCCESS, job.Status)
 	}
 }
@@ -130,7 +130,7 @@ func TestExecuteJobError(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected  error, got %v\n", err)
 	}
-	if job.Status != JOB_STATUS_ERROR {
+	if job.GetStatus() != JOB_STATUS_ERROR {
 		t.Errorf("Expected %s, got %s\n", JOB_STATUS_ERROR, job.Status)
 	}
 
@@ -153,12 +153,10 @@ func TestExecuteJobCancel(t *testing.T) {
 		}
 		// log.Info(err)
 		// log.Info("TestExecuteJobCancel finished")
-
-		done <- true
 	}()
 	<-started
 	// time.Sleep(10 * time.Millisecond)
-	if job.Status != JOB_STATUS_IN_PROGRESS {
+	if job.GetStatus() != JOB_STATUS_IN_PROGRESS {
 		// t.Errorf("job.Status %v",job.Status)
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -169,14 +167,14 @@ func TestExecuteJobCancel(t *testing.T) {
 	}
 
 	<-done
-	if job.Status != JOB_STATUS_CANCELED {
+	if job.GetStatus() != JOB_STATUS_CANCELED {
 		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.Status)
 	}
 }
 
 func TestJobFailed(t *testing.T) {
 	job := NewTestJob("echo", "echo")
-	if job.Status == JOB_STATUS_ERROR {
+	if job.GetStatus() == JOB_STATUS_ERROR {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_ERROR)
 	}
 	if errUpdate := job.Failed(); errUpdate != nil {
@@ -192,7 +190,7 @@ func TestJobFailed(t *testing.T) {
 
 func TestJobFinished(t *testing.T) {
 	job := NewTestJob("echo", "echo")
-	if job.Status == JOB_STATUS_SUCCESS {
+	if job.GetStatus() == JOB_STATUS_SUCCESS {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_SUCCESS)
 	}
 
@@ -210,7 +208,7 @@ func TestJobFinished(t *testing.T) {
 
 func TestJobCancel(t *testing.T) {
 	job := NewTestJob("echo", "echo")
-	if job.Status == JOB_STATUS_CANCELED {
+	if job.GetStatus() == JOB_STATUS_CANCELED {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_CANCELED)
 	}
 	if errUpdate := job.Cancel(); errUpdate != nil {
@@ -238,7 +236,7 @@ func TestJobUpdateActivity(t *testing.T) {
 
 func TestJobUpdateStatus(t *testing.T) {
 	job := NewTestJob("echo", "echo")
-	if job.Status == JOB_STATUS_SUCCESS {
+	if job.GetStatus() == JOB_STATUS_SUCCESS {
 		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_PENDING)
 	}
 	_ = job.updateStatus(JOB_STATUS_SUCCESS)
