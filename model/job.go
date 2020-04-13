@@ -33,15 +33,16 @@ func StoreKey(Id string, RunUID string, ExtraRunUID string) string {
 	return fmt.Sprintf("%s:%s:%s", Id, RunUID, ExtraRunUID)
 }
 
+// Job public structure
 type Job struct {
-	Id             string
-	RunUID         string
-	ExtraRunUID    string
-	Priority       int64
-	CreateAt       time.Time
-	StartAt        time.Time
-	LastActivityAt time.Time
-	Status         string
+	Id             string    // Identificator for Job
+	RunUID         string    // Running indentification
+	ExtraRunUID    string    // Extra indentification
+	Priority       int64     // Priority for a Job
+	CreateAt       time.Time // When Job was created
+	StartAt        time.Time // When command started
+	LastActivityAt time.Time // When job metadata last changed
+	Status         string    // Currentl status
 	MaxAttempts    int      // Absoulute max num of attempts.
 	MaxFails       int      // Absolute max number of failures.
 	TTR            uint64   // Time-to-run in Millisecond
@@ -51,7 +52,7 @@ type Job struct {
 	StreamInterval time.Duration
 	mu             sync.RWMutex
 	exitError      error
-	ExitCode       int
+	ExitCode       int  // Exit code
 	cmd            *exec.Cmd
 	ctx            context.Context
 
@@ -65,6 +66,7 @@ type Job struct {
 	stremMu           sync.Mutex
 	counter           uint
 	timeQuote         bool
+    // If we should use shell and wrap the command
 	UseSHELL          bool
 	streamsBuf        []string
 }
@@ -92,7 +94,7 @@ func (j *Job) GetRawParams() []map[string]interface{} {
 	return j.RawParams
 }
 
-// GetRawParams from all previous calls
+// PutRawParams for all next calls
 func (j *Job) PutRawParams(params []map[string]interface{}) error {
 	j.RawParams = params
 	return nil
@@ -150,7 +152,7 @@ func (j *Job) Cancel() error {
 	return nil
 }
 
-// Cancel job
+// Failed job flow
 // update your API
 func (j *Job) Failed() error {
 	j.mu.Lock()
@@ -256,7 +258,7 @@ func (j *Job) doNotify() {
 	}
 }
 
-// FlushSteamsBuffer
+// FlushSteamsBuffer - empty current job's streams lines
 func (j *Job) FlushSteamsBuffer() error {
 	return j.doSendSteamBuf()
 }
@@ -311,10 +313,10 @@ func (j *Job) runcmd() error {
 	defer cancel()
 	// Use shell wrapper
 	j.mu.Lock()
-	cmd_splitted := strings.Fields(j.CMD)
+	cmdSplitted := strings.Fields(j.CMD)
 	defaultPath := "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	if useCmdAsIs(j.CMD) {
-		j.cmd = execCommandContext(ctx, cmd_splitted[0], cmd_splitted[1:]...)
+		j.cmd = execCommandContext(ctx, cmdSplitted[0], cmdSplitted[1:]...)
 
 	} else if j.UseSHELL {
 		shell := "sh"
@@ -342,7 +344,7 @@ func (j *Job) runcmd() error {
 		}
 		j.cmd = execCommandContext(ctx, shell, args...)
 	} else {
-		j.cmd = execCommandContext(ctx, cmd_splitted[0], cmd_splitted[1:]...)
+		j.cmd = execCommandContext(ctx, cmdSplitted[0], cmdSplitted[1:]...)
 	}
 
 	mergedENV := append(j.CmdENV, os.Environ()...)

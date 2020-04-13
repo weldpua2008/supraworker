@@ -18,21 +18,21 @@ func fileExists(filename string) bool {
 }
 
 func useCmdAsIs(CMD string) bool {
-	cmd_splitted := strings.Fields(CMD)
+	cmdSplitted := strings.Fields(CMD)
 
-	if (len(cmd_splitted) > 0) && (fileExists(cmd_splitted[0])) {
+	if (len(cmdSplitted) > 0) && (fileExists(cmdSplitted[0])) {
 		// in case of bash
-		if strings.HasSuffix(cmd_splitted[0], "bash") {
+		if strings.HasSuffix(cmdSplitted[0], "bash") {
 			return true
 			// in case su or sudo
-			// } else if strings.HasSuffix(cmd_splitted[0], "su") || strings.HasSuffix(cmd_splitted[0], "sudo") {
+			// } else if strings.HasSuffix(cmdSplitted[0], "su") || strings.HasSuffix(cmdSplitted[0], "sudo") {
 			// 	return true
-		} else if cmd_splitted[0] == "/bin/bash" || cmd_splitted[0] == "/bin/sh" {
+		} else if cmdSplitted[0] == "/bin/bash" || cmdSplitted[0] == "/bin/sh" {
 			return true
 		}
-	} else if (cmd_splitted[0] == "bash") || (cmd_splitted[0] == "sh") {
+	} else if (cmdSplitted[0] == "bash") || (cmdSplitted[0] == "sh") {
 		return true
-		// } else if (cmd_splitted[0] == "sudo") || (cmd_splitted[0] == "su") {
+		// } else if (cmdSplitted[0] == "sudo") || (cmdSplitted[0] == "su") {
 		// 	return true
 	}
 	return false

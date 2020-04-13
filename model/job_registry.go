@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// NewRegistry returns a new Registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		all: make(map[string]*Job),
@@ -34,7 +35,7 @@ func (r *Registry) Add(rec *Job) bool {
 	return true
 }
 
-// Return length of registry
+// Len returns length of registry.
 func (r *Registry) Len() int {
 	r.mu.RLock()
 	c := len(r.all)
@@ -80,7 +81,7 @@ func (r *Registry) Cleanup() (num int) {
 	return num
 }
 
-// GracefullShutdown
+// GracefullShutdown is used when we stop the Registry.
 // cancel all running & pending job
 // return false if we can't cancel any job
 func (r *Registry) GracefullShutdown() bool {
@@ -103,7 +104,7 @@ func (r *Registry) GracefullShutdown() bool {
 	return failed
 }
 
-// Look up job by ID
+// Record fetch job by Job ID.
 // Follows comma ok idiom
 func (r *Registry) Record(jid string) (*Job, bool) {
 	r.mu.RLock()

@@ -108,7 +108,7 @@ func TestGenerateJobs(t *testing.T) {
 	jobs := make(chan *model.Job, 1)
 
 	go func() {
-		if err := StartGenerateJobs(jobs, ctx, time.Duration(5)*time.Second); err != nil {
+		if err := StartGenerateJobs(ctx, jobs, time.Duration(5)*time.Second); err != nil {
 			log.Infof("StartGenerateJobs failed %v", err)
 		}
 	}()

@@ -20,14 +20,17 @@ import (
 
 var (
 	log          = logrus.WithFields(logrus.Fields{"package": "job"})
+    // Registry for the Jobs
 	JobsRegistry = model.NewRegistry()
 )
 
+// ApiJobRequest is struct for new jobs
 type ApiJobRequest struct {
-	Job_status string `json:"job_status"`
+	JobStatus string `json:"job_status"`
 	Limit      int64  `json:"limit"`
 }
 
+// An ApiJobResponse represents a Job response.
 // Example response
 // {
 //   "job_id": "dbd618f0-a878-e477-7234-2ef24cb85ef6",
@@ -59,7 +62,7 @@ type ApiJobResponse struct {
 // NewApiJobRequest prepare struct for Jobs for execution request
 func NewApiJobRequest() *ApiJobRequest {
 	return &ApiJobRequest{
-		Job_status: "PENDING",
+		JobStatus: "PENDING",
 		Limit:      5,
 	}
 }
@@ -67,7 +70,7 @@ func NewApiJobRequest() *ApiJobRequest {
 // StartGenerateJobs goroutine for getting jobs from API with internal
 // it expects `model.FetchNewJobAPIURL`
 // exists on kill
-func StartGenerateJobs(jobs chan *model.Job, ctx context.Context, interval time.Duration) error {
+func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.Duration) error {
 	if len(model.FetchNewJobAPIURL) < 1 {
 		close(jobs)
 		log.Warn("Please provide URL to fetch new Jobs")

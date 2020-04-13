@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 			delay = 1
 		}
 
-		api_delay_sec := time.Duration(delay) * time.Second
+		apiCallDelaySeconds := time.Duration(delay) * time.Second
 
 		// load config
 		if errCnf := model.ReinitializeConfig(); errCnf != nil {
@@ -101,13 +101,13 @@ var rootCmd = &cobra.Command{
 			config.ReinitializeConfig()
 		})
 		go func() {
-			if err := job.StartGenerateJobs(jobs, ctx, api_delay_sec); err != nil {
+			if err := job.StartGenerateJobs(ctx, jobs, apiCallDelaySeconds); err != nil {
 				log.Tracef("StartGenerateJobs returned error %v", err)
 			}
 		}()
 
 		go func() {
-			if err := model.StartHeartBeat(ctx, api_delay_sec); err != nil {
+			if err := model.StartHeartBeat(ctx, apiCallDelaySeconds); err != nil {
 				log.Tracef("StartGenerateJobs returned error %v", err)
 			}
 		}()

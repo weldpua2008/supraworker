@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// StartHeartBeat which should update your API.
 func StartHeartBeat(ctx context.Context, interval time.Duration) error {
 
 	chanSentHeartBeats := make(chan int, 1)
@@ -17,13 +18,13 @@ func StartHeartBeat(ctx context.Context, interval time.Duration) error {
 			tickerSendHeartBeats.Stop()
 		}()
 
-		hb_all := 0
-		hb_failed := 0
+		hbAll := 0
+		hbFailed := 0
 		for {
 			select {
 			case <-ctx.Done():
-				chanSentHeartBeats <- hb_all
-				chanFailedToSentHeartBeats <- hb_failed
+				chanSentHeartBeats <- hbAll
+				chanFailedToSentHeartBeats <- hbFailed
 				log.Debug("Heartbeat generation finished [ SUCESSFULLY ]")
 				return
 			case <-tickerSendHeartBeats.C:
@@ -32,9 +33,9 @@ func StartHeartBeat(ctx context.Context, interval time.Duration) error {
 					params := GetAPIParamsFromSection(stage)
 					if errApi, result := DoApiCall(ctx, params, stage); errApi != nil {
 						log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
-						hb_failed += 1
+						hbFailed += 1
 					}
-					hb_all += 1
+					hbAll += 1
 				}
 			}
 		}
