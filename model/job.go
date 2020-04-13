@@ -17,7 +17,7 @@ import (
 // IsTerminalStatus returns true if status is terminal:
 // - Failed
 // - Canceled
-// - Successfull
+// - Successful
 func IsTerminalStatus(status string) bool {
 	switch status {
 	case JOB_STATUS_ERROR, JOB_STATUS_CANCELED, JOB_STATUS_SUCCESS:
@@ -506,8 +506,7 @@ func (j *Job) Run() error {
 	return err
 }
 
-// Finish sucessfull job
-// update your API
+// Finish is triggered when execution is successful.
 func (j *Job) Finish() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()

@@ -25,7 +25,7 @@ func StartHeartBeat(ctx context.Context, interval time.Duration) error {
 			case <-ctx.Done():
 				chanSentHeartBeats <- hbAll
 				chanFailedToSentHeartBeats <- hbFailed
-				log.Debug("Heartbeat generation finished [ SUCESSFULLY ]")
+				log.Debug("Heartbeat generation finished [ SUCCESSFULLY ]")
 				return
 			case <-tickerSendHeartBeats.C:
 				stage := "heartbeat.update"

@@ -94,7 +94,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				close(jobs)
 				doneNumJobs <- j
 				if GracefullShutdown(jobs) {
-					log.Debug("Jobs generation finished [ SUCESSFULLY ]")
+					log.Debug("Jobs generation finished [ SUCCESSFULLY ]")
 				} else {
 					log.Warn("Jobs generation finished [ FAILED ]")
 				}
@@ -162,7 +162,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 			select {
 			case <-ctx.Done():
 				doneNumCancelJobs <- j
-				log.Debug("Jobs cancelation finished [ SUCESSFULLY ]")
+				log.Debug("Jobs cancelation finished [ SUCCESSFULLY ]")
 
 				return
 			case <-tickerCancelJobs.C:

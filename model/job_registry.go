@@ -70,7 +70,7 @@ func (r *Registry) Cleanup() (num int) {
 				if err := v.Cancel(); err != nil {
 					log.Debug(fmt.Sprintf("failed cancel job %s %v StartAt %v", v.Id, err, v.StartAt))
 				} else {
-					log.Debug(fmt.Sprintf("sucessfully canceled job %s StartAt %v, TTR %v msec", v.Id, v.StartAt, v.TTR))
+					log.Debug(fmt.Sprintf("successfully canceled job %s StartAt %v, TTR %v msec", v.Id, v.StartAt, v.TTR))
 				}
 			}
 			delete(r.all, k)
@@ -96,7 +96,7 @@ func (r *Registry) GracefullShutdown() bool {
 				log.Debug(fmt.Sprintf("failed cancel job %s %v", v.Id, err))
 				failed = true
 			} else {
-				log.Debug(fmt.Sprintf("sucessfully canceled job %s", v.Id))
+				log.Debug(fmt.Sprintf("successfully canceled job %s", v.Id))
 			}
 		}
 		delete(r.all, k)

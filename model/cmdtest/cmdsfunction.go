@@ -80,7 +80,7 @@ func CMDWapBashForTest(cmd string) string {
 }
 
 // TestHelperProcess used for catch any command and mock the result
-// By default we expect `GO_WANT_HELPER_PROCESS` enviroment variable
+// By default we expect `GO_WANT_HELPER_PROCESS` environment variable
 // We will print any word after `echo`
 // Control exit code:
 // - by providing exit 0
@@ -102,7 +102,7 @@ func TestHelperProcess(t *testing.T) {
 
 	re := regexp.MustCompile(`echo (.+?)`)
 	// Handle the case where args[0] is dir:...
-	// TODO: Futher Validation
+	// TODO: Further Validation
 	// if !strings.Contains(strings.Join(args, " "), "bash") {
 	// 	fmt.Fprintf(os.Stderr, "Expected command to be 'bash'. Got: '%s' %s", strings.Join(args, " "), args)
 	// 	os.Exit(2)
