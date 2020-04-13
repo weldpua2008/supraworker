@@ -62,7 +62,7 @@ type ApiJobResponse struct {
 // NewApiJobRequest prepare struct for Jobs for execution request
 func NewApiJobRequest() *ApiJobRequest {
 	return &ApiJobRequest{
-		JobStatus: "PENDING",
+	JobStatus: "PENDING",
 		Limit:     5,
 	}
 }
