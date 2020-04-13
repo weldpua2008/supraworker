@@ -19,15 +19,15 @@ import (
 )
 
 var (
-	log          = logrus.WithFields(logrus.Fields{"package": "job"})
-    // Registry for the Jobs
+	log = logrus.WithFields(logrus.Fields{"package": "job"})
+	// Registry for the Jobs
 	JobsRegistry = model.NewRegistry()
 )
 
 // ApiJobRequest is struct for new jobs
 type ApiJobRequest struct {
 	JobStatus string `json:"job_status"`
-	Limit      int64  `json:"limit"`
+	Limit     int64  `json:"limit"`
 }
 
 // An ApiJobResponse represents a Job response.
@@ -63,7 +63,7 @@ type ApiJobResponse struct {
 func NewApiJobRequest() *ApiJobRequest {
 	return &ApiJobRequest{
 		JobStatus: "PENDING",
-		Limit:      5,
+		Limit:     5,
 	}
 }
 

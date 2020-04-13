@@ -61,12 +61,12 @@ type UrlConf struct {
 }
 
 var (
-    // CfgFile defines Path to the config
-	CfgFile  string
-    // ClientId defines Indentification for the instance.
+	// CfgFile defines Path to the config
+	CfgFile string
+	// ClientId defines Indentification for the instance.
 	ClientId string
-    // C defines main configuration structure.
-	C        Config = Config{
+	// C defines main configuration structure.
+	C Config = Config{
 		CallAPIDelaySec: int(2),
 
 		// JobsAPI: UrlConf{

@@ -43,16 +43,16 @@ type Job struct {
 	StartAt        time.Time // When command started
 	LastActivityAt time.Time // When job metadata last changed
 	Status         string    // Currentl status
-	MaxAttempts    int      // Absoulute max num of attempts.
-	MaxFails       int      // Absolute max number of failures.
-	TTR            uint64   // Time-to-run in Millisecond
-	CMD            string   // Comamand
-	CmdENV         []string // Comamand
+	MaxAttempts    int       // Absoulute max num of attempts.
+	MaxFails       int       // Absolute max number of failures.
+	TTR            uint64    // Time-to-run in Millisecond
+	CMD            string    // Comamand
+	CmdENV         []string  // Comamand
 
 	StreamInterval time.Duration
 	mu             sync.RWMutex
 	exitError      error
-	ExitCode       int  // Exit code
+	ExitCode       int // Exit code
 	cmd            *exec.Cmd
 	ctx            context.Context
 
@@ -66,9 +66,9 @@ type Job struct {
 	stremMu           sync.Mutex
 	counter           uint
 	timeQuote         bool
-    // If we should use shell and wrap the command
-	UseSHELL          bool
-	streamsBuf        []string
+	// If we should use shell and wrap the command
+	UseSHELL   bool
+	streamsBuf []string
 }
 
 // StoreKey returns StoreKey
@@ -80,7 +80,7 @@ func (j *Job) StoreKey() string {
 func (j *Job) GetStatus() string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-    return j.Status
+	return j.Status
 }
 
 // updatelastActivity for the Job
@@ -273,8 +273,8 @@ func (j *Job) FlushSteamsBuffer() error {
 // doSendSteamBuf low-level functions which sends streams to the remote API
 // Send stream only if there is something
 func (j *Job) doSendSteamBuf() error {
-    j.stremMu.Lock()
-    defer j.stremMu.Unlock()
+	j.stremMu.Lock()
+	defer j.stremMu.Unlock()
 	if len(j.streamsBuf) > 0 {
 		// log.Tracef("doSendSteamBuf for '%v' len '%v' %v\n ", j.Id, len(j.streamsBuf),j.streamsBuf)
 
