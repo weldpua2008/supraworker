@@ -1,12 +1,14 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"github.com/spf13/viper"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // DefaultPath returns PATH variable
@@ -125,4 +127,22 @@ func useCmdAsIs(CMD string) bool {
 func urlProvided(stage string) bool {
 	url := viper.GetString(fmt.Sprintf("%s.url", stage))
 	return len(url) >= 1
+}
+
+// prepare context for Job.
+func prepareContaxt(jobCtx context.Context, ttr uint64) (context.Context, context.CancelFunc) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+	// in case we have time limitation or context
+	if (ttr > 0) && (jobCtx != nil) {
+		ctx, cancel = context.WithTimeout(jobCtx, time.Duration(ttr)*time.Millisecond)
+	} else if (ttr > 0) && (jobCtx == nil) {
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(ttr)*time.Millisecond)
+	} else if jobCtx != nil {
+		ctx, cancel = context.WithCancel(jobCtx)
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
+	return ctx, cancel
+
 }

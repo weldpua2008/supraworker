@@ -305,21 +305,10 @@ func (j *Job) doSendSteamBuf() error {
 // returns error
 // supports cancellation
 func (j *Job) runcmd() error {
-	var ctx context.Context
-	var cancel context.CancelFunc
-	// in case we have time limitation or context
-	if (j.TTR > 0) && (j.ctx != nil) {
-		ctx, cancel = context.WithTimeout(j.ctx, time.Duration(j.TTR)*time.Millisecond)
-	} else if (j.TTR > 0) && (j.ctx == nil) {
-		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(j.TTR)*time.Millisecond)
-	} else if j.ctx != nil {
-		ctx, cancel = context.WithCancel(j.ctx)
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
-	}
+    j.mu.Lock()
+    ctx, cancel := prepareContaxt(j.ctx, j.TTR)
 	defer cancel()
 	// Use shell wrapper
-	j.mu.Lock()
 	shell, args := CmdWrapper(j.RunAs, j.UseSHELL, j.CMD)
 	j.cmd = execCommandContext(ctx, shell, args...)
 	j.cmd.Env = MergeEnvVars(j.CmdENV)
@@ -337,7 +326,7 @@ func (j *Job) runcmd() error {
 		return fmt.Errorf("cmd.StderrPipe, %s", err)
 	}
 
-	log.Trace(fmt.Sprintf("Run cmd: %v\n", j.cmd))
+	log.Tracef("Run cmd: %v\n", j.cmd)
 	err = j.cmd.Start()
 	j.mu.Lock()
 	if errUpdate := j.updateStatus(JOB_STATUS_IN_PROGRESS); errUpdate != nil {
@@ -346,8 +335,7 @@ func (j *Job) runcmd() error {
 	j.mu.Unlock()
 	// update API
 	stage := "jobs.run"
-	params := j.GetAPIParams(stage)
-	if errApi, result := DoApiCall(j.ctx, params, stage); errApi != nil {
+	if errApi, result := DoApiCall(j.ctx, j.GetAPIParams(stage), stage); errApi != nil {
 		log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
 	}
 	if err != nil {
