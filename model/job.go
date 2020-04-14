@@ -5,9 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -48,6 +46,7 @@ type Job struct {
 	TTR            uint64    // Time-to-run in Millisecond
 	CMD            string    // Comamand
 	CmdENV         []string  // Comamand
+	RunAs          string    // RunAs defines user
 
 	StreamInterval time.Duration
 	mu             sync.RWMutex
@@ -321,57 +320,9 @@ func (j *Job) runcmd() error {
 	defer cancel()
 	// Use shell wrapper
 	j.mu.Lock()
-	cmdSplitted := strings.Fields(j.CMD)
-	defaultPath := "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	if useCmdAsIs(j.CMD) {
-		j.cmd = execCommandContext(ctx, cmdSplitted[0], cmdSplitted[1:]...)
-
-	} else if j.UseSHELL {
-		shell := "sh"
-		args := []string{"-c", j.CMD}
-		switch runtime.GOOS {
-		case "windows":
-			defaultPath = "%SystemRoot%\\system32;%SystemRoot%;%SystemRoot%\\System32\\Wbem"
-
-			shell = "powershell.exe"
-			if ps, err := exec.LookPath("powershell.exe"); err == nil {
-				args = []string{"-NoProfile", "-NonInteractive", j.CMD}
-				shell = ps
-
-			} else if bash, err := exec.LookPath("bash.exe"); err == nil {
-				shell = bash
-			} else {
-				log.Tracef("Can't fetch powershell nor bash, got %s\n", err)
-			}
-
-		default:
-			if bash, err := exec.LookPath("bash"); err == nil {
-				shell = bash
-			}
-
-		}
-		j.cmd = execCommandContext(ctx, shell, args...)
-	} else {
-		j.cmd = execCommandContext(ctx, cmdSplitted[0], cmdSplitted[1:]...)
-	}
-
-	mergedENV := append(j.CmdENV, os.Environ()...)
-	mergedENV = append(mergedENV, defaultPath)
-	unique := make(map[string]bool, len(mergedENV))
-
-	for indx := range mergedENV {
-		if len(strings.Split(mergedENV[indx], "=")) != 2 {
-			continue
-		}
-		k := strings.Split(mergedENV[indx], "=")[0]
-		if _, ok := unique[k]; !ok {
-			j.cmd.Env = append(j.cmd.Env, mergedENV[indx])
-			unique[k] = true
-		}
-		// if strings.HasPrefix(j.cmd.Env[indx],"PATH="){
-		//     j.cmd.Env[indx]
-		// }
-	}
+	shell, args := CmdWrapper(j.RunAs, j.UseSHELL, j.CMD)
+	j.cmd = execCommandContext(ctx, shell, args...)
+	j.cmd.Env = MergeEnvVars(j.CmdENV)
 	j.mu.Unlock()
 
 	stdout, err := j.cmd.StdoutPipe()
@@ -559,6 +510,7 @@ func NewJob(id string, cmd string) *Job {
 		counter:           0,
 		elements:          100,
 		UseSHELL:          true,
+		RunAs:             "",
 		StreamInterval:    time.Duration(5) * time.Second,
 	}
 }

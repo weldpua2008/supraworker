@@ -64,25 +64,6 @@ func TestStreamApi(t *testing.T) {
           "job_uid": "job_uid"
           "run_uid": "1"
     `)
-	//
-	// var yamlExample = []byte(`
-	// jobs:
-	//   run: &run
-	//     url: "`+srv.URL+`"
-	//     method: post
-	//   stream:
-	//         <<: *run
-	//   cancelation:
-	//       <<: *run
-	//   get:
-	//       <<: *run
-	//   finish: &finish
-	//     <<: *run
-	//   failed: &filed
-	//     <<: *run
-	//   cancel: &cancel
-	//     <<: *run
-	// `)
 	if err := viper.ReadConfig(bytes.NewBuffer(yamlExample)); err != nil {
 		t.Errorf("Can't read config: %v\n", err)
 	}
