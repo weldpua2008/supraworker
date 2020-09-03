@@ -59,6 +59,7 @@ func (r *Registry) Delete(id string) bool {
 // Cleanup by job TTR.
 // Return number of cleaned jobs.
 // TODO: Consider new timeout status & flow
+//  - Add batch
 func (r *Registry) Cleanup() (num int) {
 	now := time.Now()
 	r.mu.Lock()

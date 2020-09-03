@@ -305,8 +305,8 @@ func (j *Job) doSendSteamBuf() error {
 // returns error
 // supports cancellation
 func (j *Job) runcmd() error {
-    j.mu.Lock()
-    ctx, cancel := prepareContaxt(j.ctx, j.TTR)
+	j.mu.Lock()
+	ctx, cancel := prepareContaxt(j.ctx, j.TTR)
 	defer cancel()
 	// Use shell wrapper
 	shell, args := CmdWrapper(j.RunAs, j.UseSHELL, j.CMD)
