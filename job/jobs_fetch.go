@@ -142,6 +142,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						}
 						job.TTR = TTR
 						if JobsRegistry.Add(job) {
+							jobsProcessed.Inc()
 							jobs <- job
 							j += 1
 							log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
