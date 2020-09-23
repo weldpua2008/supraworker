@@ -40,7 +40,7 @@ func StartHealthCheck(listenAddr string, uri string) *http.Server {
 
 func WaitForShutdown(ctx context.Context, srv *http.Server) {
 	if err := srv.Shutdown(ctx); err != http.ErrServerClosed {
-        log.Warningf("Shutdown %v", err)
+		log.Warningf("Shutdown %v", err)
 
-    }
+	}
 }
