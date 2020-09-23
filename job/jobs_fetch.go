@@ -140,6 +140,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 
 							TTR = uint64((time.Duration(3600) * time.Second).Milliseconds())
 						}
+                        job.TTR = TTR
 						if JobsRegistry.Add(job) {
 							jobs <- job
 							j += 1
