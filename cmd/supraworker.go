@@ -28,11 +28,11 @@ import (
 )
 
 var (
-	verbose          bool
-	traceFlag        bool
+	verbose   bool
+	traceFlag bool
 	// epsagonTraceFlag bool
-	log                  = logrus.WithFields(logrus.Fields{"package": "cmd"})
-	numWorkers       int = 5
+	log            = logrus.WithFields(logrus.Fields{"package": "cmd"})
+	numWorkers int = 5
 )
 
 func init() {
