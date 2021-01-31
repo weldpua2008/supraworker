@@ -47,22 +47,22 @@ func StartHeartBeat(ctx context.Context, section string, interval time.Duration)
 			case <-tickerHeartBeats.C:
 
 				func() {
-				clusterCtx, cancel := context.WithTimeout(ctx, time.Duration(15)*time.Second)
-				// TODO: wrap it in a function –either an anonymous or a named function
-				defer cancel() // cancel when we are getting the kill signal or exit
-				config.C.NumActiveJobs = worker.NumActiveJobs
-				config.C.NumFreeSlots = config.C.NumWorkers - config.C.NumActiveJobs
-				for _, comm := range communicators {
-					_ = comm.Configure(param)
-					res, err := comm.Fetch(clusterCtx, param)
-					if err != nil {
-						log.Tracef("Can't send healthcheck %v got %v", err, res)
-						hbFailed += 1
-						continue
+					clusterCtx, cancel := context.WithTimeout(ctx, time.Duration(15)*time.Second)
+					// TODO: wrap it in a function –either an anonymous or a named function
+					defer cancel() // cancel when we are getting the kill signal or exit
+					config.C.NumActiveJobs = worker.NumActiveJobs
+					config.C.NumFreeSlots = config.C.NumWorkers - config.C.NumActiveJobs
+					for _, comm := range communicators {
+						_ = comm.Configure(param)
+						res, err := comm.Fetch(clusterCtx, param)
+						if err != nil {
+							log.Tracef("Can't send healthcheck %v got %v", err, res)
+							hbFailed += 1
+							continue
+						}
+						hbAll += 1
 					}
-					hbAll += 1
-				}
-			}()
+				}()
 			}
 		}
 	}()
