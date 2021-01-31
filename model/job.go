@@ -32,10 +32,10 @@ func StoreKey(Id string, RunUID string, ExtraRunUID string) string {
 
 // Job public structure
 type Job struct {
-	Id                    string         // Identification for Job
-	RunUID                string         // Running identification
-	ExtraRunUID           string         // Extra identification
-	Priority              int64          // Priority for a Job
+	Id                     string        // Identification for Job
+	RunUID                 string        // Running identification
+	ExtraRunUID            string        // Extra identification
+	Priority               int64         // Priority for a Job
 	CreateAt               time.Time     // When Job was created
 	StartAt                time.Time     // When command started
 	LastActivityAt         time.Time     // When job metadata last changed
