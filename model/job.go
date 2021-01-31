@@ -32,27 +32,27 @@ func StoreKey(Id string, RunUID string, ExtraRunUID string) string {
 
 // Job public structure
 type Job struct {
-	Id                    string        // Identification for Job
-	RunUID                string        // Running identification
-	ExtraRunUID           string        // Extra identification
-	Priority              int64         // Priority for a Job
-	CreateAt              time.Time     // When Job was created
-	StartAt               time.Time     // When command started
-	LastActivityAt        time.Time     // When job metadata last changed
-	Status                string        // Currently status
-	MaxAttempts           int           // Absolute max num of attempts.
-	MaxFails              int           // Absolute max number of failures.
-	TTR                   uint64        // Time-to-run in Millisecond
-	CMD                   string        // Command
-	CmdENV                []string      // Command
-	RunAs                 string        // RunAs defines user
-	ResetBackPresureTimer time.Duration // how often we will dump the logs
-	StreamInterval        time.Duration
-	mu                    sync.RWMutex
-	exitError             error
-	ExitCode              int // Exit code
-	cmd                   *exec.Cmd
-	ctx                   context.Context
+	Id                    string         // Identification for Job
+	RunUID                string         // Running identification
+	ExtraRunUID           string         // Extra identification
+	Priority              int64          // Priority for a Job
+	CreateAt               time.Time     // When Job was created
+	StartAt                time.Time     // When command started
+	LastActivityAt         time.Time     // When job metadata last changed
+	Status                 string        // Currently status
+	MaxAttempts            int           // Absolute max num of attempts.
+	MaxFails               int           // Absolute max number of failures.
+	TTR                    uint64        // Time-to-run in Millisecond
+	CMD                    string        // Command
+	CmdENV                 []string      // Command
+	RunAs                  string        // RunAs defines user
+	ResetBackPressureTimer time.Duration // how often we will dump the logs
+	StreamInterval         time.Duration
+	mu                     sync.RWMutex
+	exitError              error
+	ExitCode               int // Exit code
+	cmd                    *exec.Cmd
+	ctx                    context.Context
 
 	// params got from your API
 	RawParams []map[string]interface{}
@@ -115,10 +115,10 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 	resendParamsKeys := GetSliceParamsFromSection(stage, "resend-params")
 	// log.Tracef(" GetAPIParams(%s) params params %v\nresend-params %v\n", stage,params,resendParamsKeys)
 
-	for _, resandParamKey := range resendParamsKeys {
+	for _, resendParamKey := range resendParamsKeys {
 		for _, rawVal := range j.RawParams {
-			if val, ok := rawVal[resandParamKey]; ok {
-				c[resandParamKey] = fmt.Sprintf("%s", val)
+			if val, ok := rawVal[resendParamKey]; ok {
+				c[resendParamKey] = fmt.Sprintf("%s", val)
 			}
 		}
 	}
@@ -358,8 +358,8 @@ func (j *Job) runcmd() error {
 
 	// reset backpresure counter
 	per := 5 * time.Second
-	if j.ResetBackPresureTimer.Nanoseconds() > 0 {
-		per = j.ResetBackPresureTimer
+	if j.ResetBackPressureTimer.Nanoseconds() > 0 {
+		per = j.ResetBackPressureTimer
 	}
 	resetCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
