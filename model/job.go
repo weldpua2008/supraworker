@@ -32,19 +32,19 @@ func StoreKey(Id string, RunUID string, ExtraRunUID string) string {
 
 // Job public structure
 type Job struct {
-	Id                    string        // Identificator for Job
-	RunUID                string        // Running indentification
-	ExtraRunUID           string        // Extra indentification
+	Id                    string        // Identification for Job
+	RunUID                string        // Running identification
+	ExtraRunUID           string        // Extra identification
 	Priority              int64         // Priority for a Job
 	CreateAt              time.Time     // When Job was created
 	StartAt               time.Time     // When command started
 	LastActivityAt        time.Time     // When job metadata last changed
-	Status                string        // Currentl status
-	MaxAttempts           int           // Absoulute max num of attempts.
+	Status                string        // Currently status
+	MaxAttempts           int           // Absolute max num of attempts.
 	MaxFails              int           // Absolute max number of failures.
 	TTR                   uint64        // Time-to-run in Millisecond
-	CMD                   string        // Comamand
-	CmdENV                []string      // Comamand
+	CMD                   string        // Command
+	CmdENV                []string      // Command
 	RunAs                 string        // RunAs defines user
 	ResetBackPresureTimer time.Duration // how often we will dump the logs
 	StreamInterval        time.Duration
@@ -56,12 +56,12 @@ type Job struct {
 
 	// params got from your API
 	RawParams []map[string]interface{}
-	// steram interface
+	// stream interface
 	elements          uint
 	notify            chan interface{}
 	notifyStopStreams chan interface{}
 	notifyLogSent     chan interface{}
-	stremMu           sync.Mutex
+	streamsMu         sync.Mutex
 	counter           uint
 	timeQuote         bool
 	// If we should use shell and wrap the command
@@ -128,7 +128,7 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 }
 
 // Cancel job
-// update your API
+// It triggers an update for the your API if it's configured
 func (j *Job) Cancel() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -199,16 +199,16 @@ func (j *Job) AppendLogStream(logStream []string) error {
 		_ = j.doSendSteamBuf()
 	}
 	j.incrementCounter()
-	j.stremMu.Lock()
+	j.streamsMu.Lock()
 	j.streamsBuf = append(j.streamsBuf, logStream...)
-	j.stremMu.Unlock()
+	j.streamsMu.Unlock()
 	return nil
 }
 
 //count next element
 func (j *Job) incrementCounter() {
-	j.stremMu.Lock()
-	defer j.stremMu.Unlock()
+	j.streamsMu.Lock()
+	defer j.streamsMu.Unlock()
 	j.counter++
 }
 
@@ -241,7 +241,7 @@ func (j *Job) resetCounterLoop(ctx context.Context, after time.Duration) {
 			return
 		case <-ticker.C:
 
-			j.stremMu.Lock()
+			j.streamsMu.Lock()
 			if j.quotaHit() {
 				// log.Tracef("doNotify for '%v'", j.Id)
 				j.timeQuote = false
@@ -249,12 +249,12 @@ func (j *Job) resetCounterLoop(ctx context.Context, after time.Duration) {
 
 			}
 			j.counter = 0
-			j.stremMu.Unlock()
+			j.streamsMu.Unlock()
 		case <-tickerTimeInterval.C:
 
-			j.stremMu.Lock()
+			j.streamsMu.Lock()
 			j.timeQuote = true
-			j.stremMu.Unlock()
+			j.streamsMu.Unlock()
 		// flush Buffer for slow logs
 		case <-tickerSlowLogsInterval.C:
 			_ = j.doSendSteamBuf()
@@ -277,8 +277,8 @@ func (j *Job) FlushSteamsBuffer() error {
 // doSendSteamBuf low-level functions which sends streams to the remote API
 // Send stream only if there is something
 func (j *Job) doSendSteamBuf() error {
-	j.stremMu.Lock()
-	defer j.stremMu.Unlock()
+	j.streamsMu.Lock()
+	defer j.streamsMu.Unlock()
 	if len(j.streamsBuf) > 0 {
 		// log.Tracef("doSendSteamBuf for '%v' len '%v' %v\n ", j.Id, len(j.streamsBuf),j.streamsBuf)
 
@@ -311,7 +311,7 @@ func (j *Job) doSendSteamBuf() error {
 // supports cancellation
 func (j *Job) runcmd() error {
 	j.mu.Lock()
-	ctx, cancel := prepareContaxt(j.ctx, j.TTR)
+	ctx, cancel := prepareContext(j.ctx, j.TTR)
 	defer cancel()
 	// Use shell wrapper
 	shell, args := CmdWrapper(j.RunAs, j.UseSHELL, j.CMD)
