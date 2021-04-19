@@ -142,7 +142,7 @@ func (j *Job) Cancel() error {
 				processTree.Get(1)
 				processChildren = processTree.Get(j.cmd.Process.Pid)
 			} else {
-				log.Warnf("Tree has %v", errTree)
+				log.Warnf("Can't form process tree, got %v", errTree)
 			}
 			if err := j.cmd.Process.Kill(); err != nil {
 				return fmt.Errorf("failed to kill process: %s", err)
