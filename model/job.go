@@ -152,7 +152,7 @@ func (j *Job) Cancel() error {
 					var process ps.Process
 					process = processList[aux]
 					if ContainsIntInIntSlice(processChildren, process.Pid()) {
-						log.Tracef("Killing PID: %d --> Name: %s --> ParentPID: %d", process.Pid(), process.Executable(), process.PPid())
+						log.Tracef("[Job %s] Killing PID: %d --> Name: %s --> ParentPID: %d", j.Id, process.Pid(), process.Executable(), process.PPid())
 						syscall.Kill(process.Pid(), syscall.SIGTERM)
 					}
 				}
