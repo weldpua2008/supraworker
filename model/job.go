@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/mitchellh/go-ps"
 	"io/ioutil"
 	"os/exec"
 	"strings"
@@ -134,9 +135,27 @@ func (j *Job) Cancel() error {
 	defer j.mu.Unlock()
 	if !IsTerminalStatus(j.Status) {
 		log.Tracef("Call Canceled for Job %s", j.Id)
+		var processChildren []int
 		if j.cmd != nil && j.cmd.Process != nil {
+			processTree, errTree := NewProcessTree()
+			if errTree == nil {
+				processTree.Get(1)
+				processChildren = processTree.Get(j.cmd.Process.Pid)
+			} else {
+				log.Warnf("Tree has %v", errTree)
+			}
 			if err := j.cmd.Process.Kill(); err != nil {
 				return fmt.Errorf("failed to kill process: %s", err)
+			}
+			if processList, err := ps.Processes(); err == nil {
+				for aux := range processList {
+					var process ps.Process
+					process = processList[aux]
+					if ContainsIntInIntSlice(processChildren, process.Pid()) {
+						log.Tracef("Killing PID: %d --> Name: %s --> ParentPID: %d", process.Pid(), process.Executable(), process.PPid())
+						syscall.Kill(process.Pid(), syscall.SIGTERM)
+					}
+				}
 			}
 		}
 
