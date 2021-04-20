@@ -234,6 +234,8 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 							if err := jobCancelation.Cancel(); err != nil {
 								log.Tracef("Can't cancel '%s' got %s ", jobCancelationId, err)
 							}
+						}else {
+							log.Tracef("Can't find job for cancelation'%s' in registry %v ", jobCancelationId, JobsRegistry)
 						}
 					}
 				}
