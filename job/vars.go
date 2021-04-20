@@ -11,7 +11,7 @@ var (
 		Help: "The total number of fetched jobs",
 	})
 	jobsCancelled = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "supraworker_fetch_jobs_cancelled_total",
+		Name: "supraworker_jobs_cancelled_total",
 		Help: "The total number of CANCELLED jobs",
 	})
 )
