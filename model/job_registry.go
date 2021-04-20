@@ -123,6 +123,9 @@ func (r *Registry) Record(jid string) (*Job, bool) {
 func (r *Registry) All() ([]*Job) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	if r.all == nil {
+		return []*Job{}
+	}
 	res := make([]*Job, len(r.all))
 	for _, v:= range r.all {
 		res = append(res, v)
