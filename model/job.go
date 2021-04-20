@@ -170,7 +170,6 @@ func (j *Job) Cancel() error {
 
 		if errUpdate := j.updateStatus(JOB_STATUS_CANCELED); errUpdate != nil {
 			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_CANCELED)
-
 		}
 		j.updatelastActivity()
 		stage := "jobs.cancel"
