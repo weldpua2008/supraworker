@@ -145,7 +145,16 @@ func (j *Job) Cancel() error {
 				log.Warnf("Can't form process tree, got %v", errTree)
 			}
 			if err := j.cmd.Process.Kill(); err != nil {
-				return fmt.Errorf("failed to kill process: %s", err)
+				status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
+				exitStatus := status.ExitStatus()
+				signaled := status.Signaled()
+				signal := status.Signal()
+				if exitStatus == 0 {
+					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
+				}
+				if signaled {
+					log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
+				}
 			}
 			if processList, err := ps.Processes(); err == nil {
 				for aux := range processList {
