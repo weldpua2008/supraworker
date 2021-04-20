@@ -520,7 +520,7 @@ func (j *Job) runcmd() error {
 		signaled := ws.Signaled()
 		signal := ws.Signal()
 		if signaled {
-			log.Tracef("Signal: %v", signal)
+			//log.Tracef("Signal: %v", signal)
 			err = fmt.Errorf("Signal: %v", signal)
 			j.exitError = err
 		} else if j.Status == JOB_STATUS_CANCELED {
