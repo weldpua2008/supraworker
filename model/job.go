@@ -552,11 +552,10 @@ func (j *Job) Run() error {
 
 		if errUpdate := j.updateStatus(finalStatus); errUpdate != nil {
 			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, finalStatus)
-
 		}
 		log.Tracef("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
 	} else {
-		log.Tracef("[RUN] Job '%s' is in terminal state to state %s", j.Id, j.Status)
+		log.Tracef("[RUN] Job '%s' is in terminal state %s", j.Id, j.Status)
 	}
 	// <-j.notifyLogSent
 	return err
