@@ -228,6 +228,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						if len(JobId) < 1 {
 							continue
 						}
+						jobsCancelled.Inc()
 						jobCancelationId := model.StoreKey(JobId, RunUID, ExtraRunUID)
 						if jobCancelation, ok := JobsRegistry.Record(jobCancelationId); ok {
 							if err := jobCancelation.Cancel(); err != nil {

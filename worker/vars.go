@@ -25,10 +25,6 @@ var (
 		Name: "supraworker_jobs_succeeded_total",
 		Help: "The total number of SUCCEEDED jobs",
 	})
-	jobsCancelled = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "supraworker_jobs_cancelled_total",
-		Help: "The total number of CANCELLED jobs",
-	})
 	jobsDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "supraworker_jobs_duration_secs",
 		Help:    "The Jobs duration in seconds.",
