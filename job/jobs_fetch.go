@@ -238,7 +238,10 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 							//log.Tracef("Can't find job for cancelation'%s' in registry %v ", jobCancelationId, JobsRegistry)
 							log.Tracef("Can't find job key '%s' for cancelation: %s extra %s runid %s", jobCancelationId, JobId, ExtraRunUID, RunUID)
 							for _, rJob:= range JobsRegistry.All(){
-								log.Tracef("id: %s extra: %s runuid: %s", rJob.Id, rJob.ExtraRunUID, rJob.RunUID)
+								if len(rJob.Id) < 2 {
+									continue
+								}
+								log.Tracef("  => id: %s extra: %s runuid: %s", rJob.Id, rJob.ExtraRunUID, rJob.RunUID)
 							}
 						}
 					}
