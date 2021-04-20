@@ -15,12 +15,12 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	// On return, notify the WaitGroup that we're done.
 	defer func() {
 		wg.Done()
-		log.Debug(fmt.Sprintf("Worker %v finished ", id))
+		log.Debugf("Worker %v finished ", id)
 	}()
 
 	log.Info(fmt.Sprintf("Starting worker %v", id))
 	for j := range jobs {
-		log.Trace(fmt.Sprintf("Worker %v received Job %v TTR %v", id, j.Id, time.Duration(j.TTR)*time.Millisecond))
+		log.Tracef("Worker %v received Job %v TTR %v", id, j.Id, time.Duration(j.TTR)*time.Millisecond)
 		mu.Lock()
 		NumActiveJobs += 1
 		mu.Unlock()

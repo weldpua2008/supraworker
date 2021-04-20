@@ -174,7 +174,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						// }
 					}
 				} else {
-					log.Trace(fmt.Sprintf("Failed fetch a new Jobs portion due %v ", err))
+					log.Tracef("Failed fetch a new Jobs portion due %v ", err)
 				}
 
 			}
@@ -185,7 +185,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 	// We are getting such jobs from API
 	// exists on kill
 
-	log.Info(fmt.Sprintf("Starting canceling jobs with delay %v", interval))
+	log.Infof("Starting canceling jobs with delay %v", interval)
 
 	go func() {
 		j := 0
@@ -193,7 +193,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 			select {
 			case <-ctx.Done():
 				doneNumCancelJobs <- j
-				log.Debug("Jobs cancelation finished [ SUCCESSFULLY ]")
+				log.Debug("Jobs cancellation finished [ SUCCESSFULLY ]")
 
 				return
 			case <-tickerCancelJobs.C:
@@ -201,7 +201,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				n := JobsRegistry.Cleanup()
 				if n > 0 {
 					j += n
-					log.Trace(fmt.Sprintf("Cleared %v/%v jobs", n, j))
+					log.Tracef("Cleared %v/%v jobs", n, j)
 				}
 
 				stage := "jobs.cancelation"
@@ -245,9 +245,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 	numSentJobs := <-doneNumJobs
 	numCancelJobs := <-doneNumCancelJobs
 
-	log.Info(fmt.Sprintf("Sent %v jobs", numSentJobs))
+	log.Infof("Sent %v jobs", numSentJobs)
 	if numCancelJobs > 0 {
-		log.Info(fmt.Sprintf("Canceled %v jobs", numCancelJobs))
+		log.Infof("Canceled %v jobs", numCancelJobs)
 	}
 	return nil
 }
@@ -257,14 +257,14 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 func GracefullShutdown(jobs <-chan *model.Job) bool {
 	// empty jobs channel
 	if len(jobs) > 0 {
-		log.Trace(fmt.Sprintf("jobs chan still has size %v, empty it", len(jobs)))
+		log.Tracef("jobs chan still has size %v, empty it", len(jobs))
 		for len(jobs) > 0 {
 			<-jobs
 		}
 	}
 	JobsRegistry.GracefullyShutdown()
 	if JobsRegistry.Len() > 0 {
-		log.Trace(fmt.Sprintf("GracefullyShutdown failed, '%v' jobs left ", JobsRegistry.Len()))
+		log.Tracef("GracefullyShutdown failed, '%v' jobs left ", JobsRegistry.Len())
 		return false
 	}
 	return true
