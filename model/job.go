@@ -523,11 +523,11 @@ func (j *Job) runcmd() error {
 			log.Tracef("Signal: %v", signal)
 			err = fmt.Errorf("Signal: %v", signal)
 			j.exitError = err
+		} else if j.Status == JOB_STATUS_CANCELED {
+			err = fmt.Errorf("return error for Canceled Job")
 		}
 	}
-	if err == nil && j.Status == JOB_STATUS_CANCELED {
-		err = fmt.Errorf("return error for Canceled Job")
-	}
+
 	// log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
 	return err
 }
