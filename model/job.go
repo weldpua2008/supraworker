@@ -149,11 +149,10 @@ func (j *Job) Cancel() error {
 				exitStatus := status.ExitStatus()
 				signaled := status.Signaled()
 				signal := status.Signal()
-				if exitStatus == 0 {
-					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
-				}
 				if signaled {
 					log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
+				} else if exitStatus == 0 {
+					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
 				}
 			}
 			if processList, err := ps.Processes(); err == nil {
@@ -199,11 +198,11 @@ func (j *Job) Failed() error {
 				exitStatus := status.ExitStatus()
 				signaled := status.Signaled()
 				signal := status.Signal()
-				if exitStatus == 0 {
-					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
-				}
+
 				if signaled {
 					log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
+				} else if exitStatus == 0 {
+					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
 				}
 			}
 		}
@@ -485,10 +484,17 @@ func (j *Job) runcmd() error {
 	// The returned error is nil if the command runs, has
 	// no problems copying stdin, stdout, and stderr,
 	// and exits with a zero exit status.
-	// log.Tracef("cmd.Wait %v", j.Id)
 	err = j.cmd.Wait()
 	if err != nil {
-		log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
+		status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
+		signaled := status.Signaled()
+		signal := status.Signal()
+
+		if signaled {
+			log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
+		} else {
+			log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
+		}
 	}
 
 	// signal that we've read all logs
@@ -513,7 +519,6 @@ func (j *Job) runcmd() error {
 	if err == nil {
 		signaled := ws.Signaled()
 		signal := ws.Signal()
-		// log.Tracef("Error: %v", err)
 		if signaled {
 			log.Tracef("Signal: %v", signal)
 			err = fmt.Errorf("Signal: %v", signal)
