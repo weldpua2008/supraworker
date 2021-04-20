@@ -215,7 +215,7 @@ func (j *Job) Failed() error {
 
 		j.updatelastActivity()
 	} else {
-		log.Tracef("[FAILED] Job '%s' is in terminal state to state %s", j.Id, j.Status)
+		log.Tracef("[FAILED] Job '%s' is in terminal state %s", j.Id, j.Status)
 	}
 	stage := "jobs.failed"
 	params := j.GetAPIParams(stage)
