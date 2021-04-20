@@ -25,7 +25,7 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 		NumActiveJobs += 1
 		mu.Unlock()
 		if err := j.Run(); err != nil {
-			log.Info(fmt.Sprintf("Job %v failed with %s", j.Id, err))
+			log.Infof("Job %v failed with %s", j.Id, err)
 			if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
 				log.Tracef("Job %v failed to flush buffer due %v", j.Id, errFlushBuf)
 			}

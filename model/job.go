@@ -139,7 +139,6 @@ func (j *Job) Cancel() error {
 		if j.cmd != nil && j.cmd.Process != nil {
 			processTree, errTree := NewProcessTree()
 			if errTree == nil {
-				//processTree.Get(1)
 				processChildren = processTree.Get(j.cmd.Process.Pid)
 			} else {
 				log.Warnf("Can't form process tree, got %v", errTree)
@@ -149,10 +148,8 @@ func (j *Job) Cancel() error {
 				exitStatus := status.ExitStatus()
 				signaled := status.Signaled()
 				signal := status.Signal()
-				if signaled {
-					log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
-				} else if exitStatus == 0 {
-					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
+				if !signaled && exitStatus == 0 {
+					log.Tracef("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
 				}
 			}
 			if processList, err := ps.Processes(); err == nil {
@@ -190,7 +187,7 @@ func (j *Job) Failed() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if !IsTerminalStatus(j.Status) {
-		log.Trace(fmt.Sprintf("Call Failed for Job %s", j.Id))
+		log.Tracef("Call Failed for Job %s", j.Id)
 
 		if j.cmd != nil && j.cmd.Process != nil {
 			if err := j.cmd.Process.Kill(); err != nil {
@@ -199,10 +196,8 @@ func (j *Job) Failed() error {
 				signaled := status.Signaled()
 				signal := status.Signal()
 
-				if signaled {
-					log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
-				} else if exitStatus == 0 {
-					return fmt.Errorf("unexpected: err %v, exitStatus was 0, while running: %s", err, j.CMD)
+				if !signaled && exitStatus == 0 {
+					log.Tracef("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
 				}
 			}
 		}
