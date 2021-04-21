@@ -17,7 +17,7 @@
   "gnetId": 6671,
   "graphTooltip": 0,
   "id": 1,
-  "iteration": 1619036560028,
+  "iteration": 1619041745809,
   "links": [],
   "panels": [
     {
@@ -192,6 +192,124 @@
         "align": false,
         "alignLevel": null
       }
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 14,
+      "links": [],
+      "options": {
+        "displayLabels": [],
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": []
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {}
+      },
+      "pluginVersion": "7.5.4",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(supraworker_fetch_jobs_total)/sum(supraworker_fetch_jobs_total)\n",
+          "format": "time_series",
+          "hide": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Total",
+          "metric": "process_resident_memory_bytes",
+          "refId": "A",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(supraworker_jobs_cancelled_total)/sum(supraworker_fetch_jobs_total)\n",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Cancelled",
+          "metric": "process_resident_memory_bytes",
+          "refId": "B",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(supraworker_jobs_failed_total)/sum(supraworker_fetch_jobs_total)\n",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Failed",
+          "metric": "process_resident_memory_bytes",
+          "refId": "C",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(supraworker_processed_jobs_total)/sum(supraworker_fetch_jobs_total)\n",
+          "format": "time_series",
+          "hide": true,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Proccessed",
+          "metric": "process_resident_memory_bytes",
+          "refId": "D",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(supraworker_jobs_succeeded_total)/sum(supraworker_fetch_jobs_total)\n",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Succeeded",
+          "metric": "process_resident_memory_bytes",
+          "refId": "E",
+          "step": 4
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Jobs",
+      "type": "piechart"
     },
     {
       "datasource": null,
@@ -1276,5 +1394,5 @@
   "timezone": "browser",
   "title": "Supraworker Processes",
   "uid": "ypFZFgvmz",
-  "version": 4
+  "version": 2
 }
