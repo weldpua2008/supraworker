@@ -32,8 +32,10 @@ var (
 	traceFlag bool
 	// epsagonTraceFlag bool
 	log            = logrus.WithFields(logrus.Fields{"package": "cmd"})
-	numWorkers int = 5
+	numWorkers int = 0
 )
+
+const defaultNumWorkers = 5
 
 func init() {
 
@@ -124,7 +126,12 @@ var rootCmd = &cobra.Command{
 				log.Tracef("StartGenerateJobs returned error %v", err)
 			}
 		}()
-
+		if (config.C.NumWorkers > numWorkers) {
+			numWorkers = config.C.NumWorkers
+		}
+		if numWorkers < 1 {
+			numWorkers = defaultNumWorkers
+		}
 		config.C.NumWorkers = 0
 		for w := 1; w <= numWorkers; w++ {
 			wg.Add(1)

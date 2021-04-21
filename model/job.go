@@ -483,13 +483,13 @@ func (j *Job) runcmd() error {
 	if err != nil {
 		status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
 		signaled := status.Signaled()
-		signal := status.Signal()
 
-		if signaled {
-			log.Tracef("Got Signal: %v, while running: %s", signal, j.CMD)
-		} else {
+		if !signaled {
 			log.Tracef("cmd.Wait for '%v' returned error: %v", j.Id, err)
+		} /* else {
+			log.Tracef("Got Signal: %v, while running: %s", status.Signal(), j.CMD)
 		}
+		*/
 	}
 
 	// signal that we've read all logs

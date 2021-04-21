@@ -29,7 +29,7 @@ type Config struct {
 	ClientId      string `mapstructure:"clientId"`
 	NumActiveJobs int    // Number of jobs
 	NumFreeSlots  int    // Number of free jobs slots
-	NumWorkers    int
+	NumWorkers    int	`mapstructure:"workers"`
 
 	ClusterId   string
 	ClusterPool string
@@ -96,8 +96,7 @@ func init() {
 func ReinitializeConfig() {
 	if len(ClientId) > 0 {
 		C.ClientId = ClientId
-	}
-	if len(C.ClientId) < 1 {
+	} else {
 		C.ClientId = "supraworker"
 	}
 }
@@ -171,13 +170,13 @@ func GetStringTemplatedDefault(section string, def string) string {
 // GetMapStringMapStringTemplatedDefault returns map of [string]string maps templated & enriched by default.
 func GetMapStringMapStringTemplatedDefault(section string, param string, def map[string]string) map[string]map[string]string {
 	ret := make(map[string]map[string]string)
-	sections_values := viper.GetStringMap(fmt.Sprintf("%s.%s", section, param))
-	for subsection, section_value := range sections_values {
-		if section_value == nil {
+	sectionsValues := viper.GetStringMap(fmt.Sprintf("%s.%s", section, param))
+	for subsection, sectionValue := range sectionsValues {
+		if sectionValue == nil {
 			continue
 		}
 		// log.Infof("%s.%s => %v",  section, param,k1)
-		if params, ok := section_value.(map[string]interface{}); ok {
+		if params, ok := sectionValue.(map[string]interface{}); ok {
 			c := make(map[string]string)
 			for k, v := range def {
 				c[k] = v
@@ -302,12 +301,4 @@ func GetTimeDurationDefault(section string, param string, def time.Duration) (in
 		}
 	}
 	return def
-}
-
-func ConvertMapStringToInterface(in map[string]string) map[string]interface{} {
-	out := make(map[string]interface{})
-	for k, v := range in {
-		out[k] = v
-	}
-	return out
 }

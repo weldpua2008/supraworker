@@ -1,0 +1,72 @@
+clientId: "exampleclient"
+workers: 50
+api_delay_sec: 2
+headers:
+  "Content-type": "application/json"
+
+jobs:
+  cancelation:
+    url: "http://api:8080/api/v1/jobs/fetch_cancel"
+    method: post
+    params:
+      "jobFlowId": "{{ .ClientId}}"
+      "limit": 5
+  logstream:
+    url: "http://api:8080/api/v1/logs/run"
+    method: POST
+    resend-params:
+        - "job_uid"
+        - "run_uid"
+        - "extra_run_id"
+#    params:
+#      job_uid: 1
+#      run_uid: 1
+#      extra_run_id: 1
+
+  get:
+    url: "http://api:8080/api/v1/jobs/fetch_new"
+    method: post
+    params:
+      "jobFlowId": "{{ .ClientId}}"
+      "limit": 5
+  run: &run
+    url: "http://api:8080/api/v1/jobs/runs"
+    method: put
+    params:
+      "previous_job_status": "PENDING"
+      "job_status": "RUNNING"
+    resend-params:
+        - "job_uid"
+        - "run_uid"
+        - "extra_run_id"
+  finish: &finish
+    <<: *run
+    params:
+      "previous_job_status": "RUNNING"
+      "job_status": "SUCCESS"
+    resend-params:
+        - "job_uid"
+        - "run_uid"
+        - "extra_run_id"
+
+  failed: &filed
+    <<: *run
+    params:
+      "previous_job_status": "RUNNING"
+      "job_status": "FAILED"
+    resend-params:
+        - "job_uid"
+        - "run_uid"
+        - "extra_run_id"
+
+  cancel: &cancel
+    <<: *run
+    params:
+      "previous_job_status": "RUNNING"
+      "job_status": "CANCELED"
+    resend-params:
+        - "job_uid"
+        - "run_uid"
+        - "extra_run_id"
+
+version: 1
