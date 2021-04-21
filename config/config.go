@@ -29,7 +29,7 @@ type Config struct {
 	ClientId      string `mapstructure:"clientId"`
 	NumActiveJobs int    // Number of jobs
 	NumFreeSlots  int    // Number of free jobs slots
-	NumWorkers    int	`mapstructure:"workers"`
+	NumWorkers    int    `mapstructure:"workers"`
 
 	ClusterId   string
 	ClusterPool string
