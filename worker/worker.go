@@ -3,6 +3,7 @@ package worker
 import (
 	"fmt"
 	"github.com/weldpua2008/supraworker/job"
+	"github.com/weldpua2008/supraworker/metrics"
 	"github.com/weldpua2008/supraworker/model"
 	"sync"
 	"time"
@@ -16,11 +17,23 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	defer func() {
 		wg.Done()
 		log.Debugf("Worker %v finished ", id)
+		metrics.WorkerStatistics.WithLabelValues(
+			"live",
+			fmt.Sprintf("worker-%v", id),
+		).Inc()
 	}()
 
-	log.Info(fmt.Sprintf("Starting worker %v", id))
+	log.Infof("Starting worker %v", id)
+	metrics.WorkerStatistics.WithLabelValues(
+		"live",
+		fmt.Sprintf("worker-%v", id),
+	).Inc()
 	for j := range jobs {
 		log.Tracef("Worker %v received Job %v TTR %v", id, j.Id, time.Duration(j.TTR)*time.Millisecond)
+		metrics.WorkerStatistics.WithLabelValues(
+			"newjob",
+			fmt.Sprintf("worker-%v", id),
+		).Inc()
 		mu.Lock()
 		NumActiveJobs += 1
 		mu.Unlock()

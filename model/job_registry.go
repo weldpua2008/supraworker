@@ -32,7 +32,21 @@ func (r *Registry) Add(rec *Job) bool {
 	}
 
 	r.all[rec.StoreKey()] = rec
+	//log.Tracef("Adding Job %s => %p", rec.StoreKey(), rec)
+	//for k, v := range r.all {
+	//	log.Infof("Existig Job [%s] %s => %p", k, v.StoreKey(), v)
+	//}
+
 	return true
+}
+
+// Map function
+func (r *Registry) Map(f func(string, *Job)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for k, v := range r.all {
+		f(k, v)
+	}
 }
 
 // Len returns length of registry.
@@ -53,6 +67,8 @@ func (r *Registry) Delete(id string) bool {
 		return false
 	}
 	delete(r.all, id)
+	//log.Tracef("Delete Job %s ", id)
+
 	return true
 }
 
@@ -67,15 +83,17 @@ func (r *Registry) Cleanup() (num int) {
 	for k, v := range r.all {
 		end := v.StartAt.Add(time.Duration(v.TTR) * time.Millisecond)
 		if (v.TTR > 0) && (now.After(end)) {
-			if !IsTerminalStatus(v.Status) {
-				if err := v.Cancel(); err != nil {
-					log.Debug(fmt.Sprintf("failed cancel job %s %v StartAt %v", v.Id, err, v.StartAt))
-				} else {
-					log.Debug(fmt.Sprintf("successfully canceled job %s StartAt %v, TTR %v msec", v.Id, v.StartAt, v.TTR))
-				}
+			if err := v.Cancel(); err != nil {
+				log.Debugf("[TIMEOUT] failed cancel job %s %v StartAt %v, %v", v.Id, err, v.StartAt, err)
+			} else {
+				log.Tracef("[TIMEOUT] successfully canceled job %s StartAt %v, TTR %v", v.Id, v.StartAt, time.Duration(v.TTR)*time.Millisecond)
 			}
+			log.Infof("Cleanup Job %s => %v", v.StoreKey(), &v)
+
 			delete(r.all, k)
 			num += 1
+		} else if len(v.Id) < 1 {
+			log.Tracef("[EMPTY Job] %v", v)
 		}
 
 	}

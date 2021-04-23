@@ -17,7 +17,7 @@
   "gnetId": 6671,
   "graphTooltip": 0,
   "id": 1,
-  "iteration": 1619041745809,
+  "iteration": 1619106064621,
   "links": [],
   "panels": [
     {
@@ -312,12 +312,160 @@
       "type": "piechart"
     },
     {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "editable": true,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "grid": {},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "hiddenSeries": false,
+      "id": 15,
+      "isNew": true,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": false,
+        "rightSide": false,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "connected",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.4",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "resident",
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "histogram_quantile(0.5, sum(rate(supraworker_jobs_cancel_latency_ns_bucket[1m])) by (le)) \n",
+          "format": "time_series",
+          "hide": true,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Cancel - {{type}}",
+          "metric": "process_resident_memory_bytes",
+          "refId": "A",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "histogram_quantile(0.5, sum(rate(suprasched_jobs_fetch_latency_ns_bucket[1m])) by (le)) \n",
+          "format": "time_series",
+          "hide": true,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Fetch - {{type}}",
+          "metric": "process_resident_memory_bytes",
+          "refId": "B",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "rate(suprasched_jobs_fetch_latency_ns_bucket[1m])\n",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Fetch - {{type}}",
+          "metric": "process_resident_memory_bytes",
+          "refId": "C",
+          "step": 4
+        },
+        {
+          "exemplar": true,
+          "expr": "rate(supraworker_jobs_cancel_latency_ns_bucket[1m])",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Cancel - {{type}}",
+          "metric": "process_resident_memory_bytes",
+          "refId": "D",
+          "step": 4
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Jobs Fetch latency",
+      "tooltip": {
+        "msResolution": false,
+        "shared": true,
+        "sort": 0,
+        "value_type": "cumulative"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "ns",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 17
       },
       "id": 10,
       "title": "Go metrics",
@@ -342,7 +490,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 10
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 1,
@@ -460,7 +608,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 10
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 4,
@@ -577,7 +725,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 18
+        "y": 26
       },
       "hiddenSeries": false,
       "id": 2,
@@ -713,7 +861,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 18
+        "y": 26
       },
       "hiddenSeries": false,
       "id": 5,
@@ -849,7 +997,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 25
+        "y": 33
       },
       "hiddenSeries": false,
       "id": 3,
@@ -952,7 +1100,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 25
+        "y": 33
       },
       "hiddenSeries": false,
       "id": 6,
@@ -1055,7 +1203,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 40
       },
       "hiddenSeries": false,
       "id": 7,
@@ -1158,7 +1306,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 40
       },
       "hiddenSeries": false,
       "id": 8,
@@ -1394,5 +1542,5 @@
   "timezone": "browser",
   "title": "Supraworker Processes",
   "uid": "ypFZFgvmz",
-  "version": 2
+  "version": 4
 }

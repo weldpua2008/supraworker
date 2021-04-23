@@ -189,13 +189,11 @@ func TestExecuteJobCancel(t *testing.T) {
 	job.TTR = 10000000
 
 	go func() {
-
 		defer func() { done <- true }()
-		// log.Info("TestExecuteJobCancel")
 		started <- true
 		err := job.Run()
 		if err == nil {
-			done <- true
+			//done <- true
 			t.Errorf("Expected  error for job %v\n, got %v\n", job, err)
 		}
 		// log.Info(err)
@@ -203,18 +201,18 @@ func TestExecuteJobCancel(t *testing.T) {
 	}()
 	<-started
 	// time.Sleep(10 * time.Millisecond)
-	if job.GetStatus() != JOB_STATUS_IN_PROGRESS {
+	for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
 		// t.Errorf("job.Status %v",job.Status)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
-	// time.Sleep(10 * time.Millisecond)
-
 	if errUpdate := job.Cancel(); errUpdate != nil {
 		log.Tracef("failed cancel %s status '%s'", job.Id, job.Status)
 	}
 
 	<-done
+	//if job.GetStatus() != JOB_STATUS_CANCELED {
 	if job.GetStatus() != JOB_STATUS_CANCELED {
+
 		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.Status)
 	}
 }

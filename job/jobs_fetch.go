@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	metrics "github.com/weldpua2008/supraworker/metrics"
 	model "github.com/weldpua2008/supraworker/model"
 	"strconv"
 	"strings"
@@ -94,7 +95,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 
 				return
 			case <-tickerGenerateJobs.C:
+				start := time.Now()
 				if err, jobsData := model.NewRemoteApiRequest(ctx, "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
+					metrics.FetchNewJobLatency.WithLabelValues("api_get").Observe(float64(time.Since(start).Nanoseconds()))
 
 					for _, jobResponse := range jobsData {
 						var JobId string
@@ -135,8 +138,8 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 									EnvVar = env
 								} else if env, ok := value.(string); ok {
 									EnvVar = []string{env}
-								} else if value_of_slice, ok := value.([]interface{}); ok {
-									for _, elem := range value_of_slice {
+								} else if valueOfSlice, ok := value.([]interface{}); ok {
+									for _, elem := range valueOfSlice {
 										if env, ok := elem.(string); ok {
 											EnvVar = append(EnvVar, env)
 										}
@@ -158,15 +161,18 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						job.RawParams = append(job.RawParams, jobResponse)
 						job.SetContext(ctx)
 						if TTR < 1 {
-
 							TTR = uint64((time.Duration(8*3600) * time.Second).Milliseconds())
 						}
 						job.TTR = TTR
+						metrics.FetchNewJobLatency.WithLabelValues("create_new_job").Observe(float64(time.Since(start).Nanoseconds()))
+
 						if JobsRegistry.Add(job) {
+							metrics.FetchNewJobLatency.WithLabelValues("append_to_registry").Observe(float64(time.Since(start).Nanoseconds()))
+
 							jobsProcessed.Inc()
 							jobs <- job
 							j += 1
-							log.Trace(fmt.Sprintf("sent job id %v ", job.Id))
+							//log.Tracef("sent job id %v ", job.Id)
 						}
 						job.CmdENV = EnvVar
 						// else {
@@ -176,6 +182,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				} else {
 					log.Tracef("Failed fetch a new Jobs portion due %v ", err)
 				}
+				metrics.FetchNewJobLatency.WithLabelValues("total").Observe(float64(time.Since(start).Nanoseconds()))
 
 			}
 		}
@@ -191,26 +198,32 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 		j := 0
 		for {
 			select {
+
 			case <-ctx.Done():
 				doneNumCancelJobs <- j
 				log.Debug("Jobs cancellation finished [ SUCCESSFULLY ]")
 
 				return
 			case <-tickerCancelJobs.C:
-
-				n := JobsRegistry.Cleanup()
-				if n > 0 {
+				start := time.Now()
+				if n := JobsRegistry.Cleanup(); n > 0 {
 					j += n
 					log.Tracef("Cleared %v/%v jobs", n, j)
+					JobsRegistry.Map(func(key string, job *model.Job) {
+						log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
+					})
 				}
+				metrics.FetchCancelLatency.WithLabelValues("registry_cleanup").Observe(float64(time.Since(start).Nanoseconds()))
 
 				stage := "jobs.cancelation"
 				params := model.GetAPIParamsFromSection(stage)
-				if err, jobsCancelationData := model.DoApiCall(ctx, params, stage); err != nil {
-					log.Tracef("failed to update api, got: %s and %s", jobsCancelationData, err)
+				if err, jobsCancellationData := model.DoApiCall(ctx, params, stage); err != nil {
+					metrics.FetchCancelLatency.WithLabelValues("failed_query").Observe(float64(time.Since(start).Nanoseconds()))
+
+					log.Tracef("failed to update api, got: %s and %s", jobsCancellationData, err)
 				} else {
 
-					for _, jobResponse := range jobsCancelationData {
+					for _, jobResponse := range jobsCancellationData {
 						var JobId string
 						var RunUID string
 						var ExtraRunUID string
@@ -246,6 +259,8 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						*/
 					}
 				}
+				metrics.FetchCancelLatency.WithLabelValues("total").Observe(float64(time.Since(start).Nanoseconds()))
+
 			}
 
 		}

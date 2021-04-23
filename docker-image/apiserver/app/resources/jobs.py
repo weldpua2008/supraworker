@@ -1,4 +1,6 @@
 import logging
+from random import randint
+import time
 from werkzeug.exceptions import BadRequest
 from flask import request
 import traceback
@@ -35,7 +37,7 @@ def query(sql, params=()):
         cursor = cnx.cursor()
         try:
             cursor.execute(sql, params)
-            if 'UPDATE' in sql:
+            if 'UPDATE' in sql or 'INSERT' in sql:
                 cnx.commit()
             result = []
             columns = cursor.description
@@ -86,7 +88,7 @@ class NewJobList(Resource):
 
         try:
 
-            for row in query("SELECT * from jobs WHERE status='pending' LIMIT 1"):
+            for row in query("SELECT * from jobs WHERE status in ('pending', 'PENDING') LIMIT 10"):
                 ret.append({
                     **row,
                     'job_id': str(row['id']),
@@ -95,9 +97,17 @@ class NewJobList(Resource):
                     'job_status': row['status'],
                     'extra_run_id': '1',
                     'jobFlowId': args['jobFlowId'],
-                    'created_at': row['created_at'].isoformat()
+                    'created_at': row['created_at'].isoformat(),
+                    'ttr': int(row['ttr'])
                 })
+            time.sleep(randint(1, 3))
+            for elem in ret:
+                query(
+                    f"UPDATE jobs SET status='propogated' WHERE id={elem['job_uid']} AND status IN ( 'pending','PENDING')")
 
+                query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 300)},'sleep {randint(1, 390)}');")
+
+            logger.info(f"New {len(ret)} jobs")
             status_code = 200
         except Exception as e:
             ret = {}
@@ -149,6 +159,9 @@ class CancelJob(Resource):
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat()
                 })
+            # if ret:
+            time.sleep(randint(1, 3))
+            logger.info(f"Cancel {len(ret)} jobs")
 
         except Exception as e:
             ret = {}
@@ -213,7 +226,7 @@ class RunJob(Resource):
         }
         try:
             status_code = 200
-            query(f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_uid']} AND status IN ( '{previous_job_status}','PENDING')" )
+            query(f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_uid']} AND status IN ( '{previous_job_status}','PENDING', 'propogated')" )
 
             for row in query(f"SELECT * from jobs WHERE id='{args['job_uid']}'"):
                 _ret = {
@@ -223,7 +236,7 @@ class RunJob(Resource):
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat()
                 }
-            logging.info(f" update job {job_uid} with {_ret}")
+            logger.info(f" update job {job_uid} with {_ret}")
         except Exception as e:
             ret = {}
             error_type = type(e).__name__

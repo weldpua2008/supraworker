@@ -128,96 +128,87 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 	return c
 }
 
+// Stops the job process and kills all children processes.
+func (j *Job) stopProcess() (cancelError error) {
+	var processChildren []int
+	if j.cmd != nil && j.cmd.Process != nil {
+		log.Tracef("[Job %s] Killing main process %v", j.Id, j.cmd.Process.Pid)
+		processTree, errTree := NewProcessTree()
+		if errTree == nil {
+			processChildren = processTree.Get(j.cmd.Process.Pid)
+		} else {
+			log.Warnf("Can't fetch process tree, got %v", errTree)
+		}
+		if err := j.cmd.Process.Kill(); err != nil {
+			status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
+			exitStatus := status.ExitStatus()
+			signaled := status.Signaled()
+			signal := status.Signal()
+			//cancelError = fmt.Errorf("failed to kill process: %s", err)
+			if !signaled && exitStatus == 0 {
+				cancelError = fmt.Errorf("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
+			}
+		}
+		if processList, err := ps.Processes(); err == nil {
+			for aux := range processList {
+				process := processList[aux]
+				if ContainsIntInIntSlice(processChildren, process.Pid()) {
+					errKill := syscall.Kill(process.Pid(), syscall.SIGTERM)
+					log.Tracef("[Job %s] Killing PID: %d --> Name: %s --> ParentPID: %d [%v]", j.Id, process.Pid(), process.Executable(), process.PPid(), errKill)
+
+				}
+			}
+		}
+	}
+	return cancelError
+}
+
 // Cancel job
 // It triggers an update for the your API if it's configured
-func (j *Job) Cancel() error {
+func (j *Job) Cancel() (cancelError error) {
 	j.mu.Lock()
-	defer j.mu.Unlock()
-	if !IsTerminalStatus(j.Status) {
-		log.Tracef("Call Canceled for Job %s", j.Id)
-		var processChildren []int
-		if j.cmd != nil && j.cmd.Process != nil {
-			processTree, errTree := NewProcessTree()
-			if errTree == nil {
-				processChildren = processTree.Get(j.cmd.Process.Pid)
-			} else {
-				log.Warnf("Can't form process tree, got %v", errTree)
-			}
-			if err := j.cmd.Process.Kill(); err != nil {
-				status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
-				exitStatus := status.ExitStatus()
-				signaled := status.Signaled()
-				signal := status.Signal()
-				if !signaled && exitStatus == 0 {
-					log.Tracef("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
-				}
-			}
-			if processList, err := ps.Processes(); err == nil {
-				for aux := range processList {
-					process := processList[aux]
-					if ContainsIntInIntSlice(processChildren, process.Pid()) {
-						errKill := syscall.Kill(process.Pid(), syscall.SIGTERM)
-						log.Tracef("[Job %s] Killing PID: %d --> Name: %s --> ParentPID: %d [%v]", j.Id, process.Pid(), process.Executable(), process.PPid(), errKill)
 
-					}
-				}
+	defer func() {
+		if !IsTerminalStatus(j.Status) {
+			if errUpdate := j.updateStatus(JOB_STATUS_CANCELED); errUpdate != nil {
+				log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_CANCELED)
+			}
+			j.updatelastActivity()
+			stage := "jobs.cancel"
+			params := j.GetAPIParams(stage)
+			if err, result := DoApiCall(j.ctx, params, stage); err != nil {
+				log.Tracef("failed to update api, got: %s and %s", result, err)
 			}
 		}
+		// Fix race condition
+		j.mu.Unlock()
+	}()
 
-		if errUpdate := j.updateStatus(JOB_STATUS_CANCELED); errUpdate != nil {
-			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_CANCELED)
-		}
-		j.updatelastActivity()
-		stage := "jobs.cancel"
-		params := j.GetAPIParams(stage)
-		if err, result := DoApiCall(j.ctx, params, stage); err != nil {
-			log.Tracef("failed to update api, got: %s and %s", result, err)
-		}
+	cancelError = j.stopProcess()
 
-	}
-	// else {
-	// 	log.Trace(fmt.Sprintf("Job %s in terminal '%s' status ", j.Id, j.Status))
-	// }
-	return nil
+	return cancelError
 }
 
 // Failed job flow
 // update your API
-func (j *Job) Failed() error {
+func (j *Job) Failed() (cancelError error) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
+	msg := fmt.Sprintf("[FAILED] Job '%s' is already in terminal state %s", j.Id, j.Status)
 	if !IsTerminalStatus(j.Status) {
-		log.Tracef("Call Failed for Job %s", j.Id)
-
-		if j.cmd != nil && j.cmd.Process != nil {
-			if err := j.cmd.Process.Kill(); err != nil {
-				status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
-				exitStatus := status.ExitStatus()
-				signaled := status.Signaled()
-				signal := status.Signal()
-
-				if !signaled && exitStatus == 0 {
-					log.Tracef("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
-				}
-			}
-		}
-
+		msg = fmt.Sprintf("[FAILED] Job '%s' moved to state %s", j.Id, j.Status)
 		if errUpdate := j.updateStatus(JOB_STATUS_ERROR); errUpdate != nil {
-			log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
-
+			msg = fmt.Sprintf("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
 		}
-		log.Tracef("[FAILED] Job '%s' moved to state %s", j.Id, j.Status)
-
 		j.updatelastActivity()
-	} else {
-		log.Tracef("[FAILED] Job '%s' is in terminal state %s", j.Id, j.Status)
 	}
+	log.Trace(msg)
 	stage := "jobs.failed"
 	params := j.GetAPIParams(stage)
 	if err, result := DoApiCall(j.ctx, params, stage); err != nil {
 		log.Tracef("failed to update api, got: %s and %s", result, err)
 	}
-	return nil
+	return j.stopProcess()
 }
 
 //  for job
@@ -361,18 +352,16 @@ func (j *Job) runcmd() error {
 		return fmt.Errorf("cmd.StderrPipe, %s", err)
 	}
 
-	err = j.cmd.Start()
 	j.mu.Lock()
+	err = j.cmd.Start()
 	if errUpdate := j.updateStatus(JOB_STATUS_IN_PROGRESS); errUpdate != nil {
 		log.Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_IN_PROGRESS)
 	}
 	j.mu.Unlock()
 	if err != nil && j.cmd.Process != nil {
 		log.Tracef("Run cmd: %v [%v]\n", j.cmd, j.cmd.Process.Pid)
-
 	} else {
 		log.Tracef("Run cmd: %v\n", j.cmd)
-
 	}
 	// update API
 	stage := "jobs.run"
@@ -386,7 +375,7 @@ func (j *Job) runcmd() error {
 	notifyStdoutSent := make(chan bool, 1)
 	notifyStderrSent := make(chan bool, 1)
 
-	// reset backpresure counter
+	// reset backpressure counter
 	per := 5 * time.Second
 	if j.ResetBackPressureTimer.Nanoseconds() > 0 {
 		per = j.ResetBackPressureTimer

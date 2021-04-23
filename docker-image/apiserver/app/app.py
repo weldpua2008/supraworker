@@ -24,3 +24,8 @@ app.register_blueprint(job_page, url_prefix="{}/jobs".format(app.config['URL_PRE
 app.register_blueprint(logs_page, url_prefix="{}/logs".format(app.config['URL_PREFIX']))
 
 logging.info("FINISHED INITIALIZATION")
+
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)

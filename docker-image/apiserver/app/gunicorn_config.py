@@ -4,10 +4,10 @@
 # from prometheus_client import multiprocess
 
 # workers = multiprocessing.cpu_count() * 2 + 1
-# workers = 1
-proc_name = 'supraworker-simple-api'
+workers = 1
+proc_name = 'supraworker-simpleapi'
 bind = ["0.0.0.0:8080", "0.0.0.0:8084"]
-threads = 2
+threads = 4
 
 # def child_exit(server, worker):
 #     multiprocess.mark_process_dead(worker.pid)

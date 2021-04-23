@@ -34,7 +34,9 @@ services:
       dockerfile: docker-image/supraworker-image-local/Dockerfile
       args:
         BASE_IMAGE: "golang"
-        BASE_TAG: "1.14-alpine"
+        BASE_TAG: "1.15-alpine"
+     ports:
+       - 8088:8080
      volumes:
        - "./supraworker/supraworker.yml:/root/supraworker.yaml"
      depends_on:
