@@ -332,6 +332,8 @@ func (j *Job) doSendSteamBuf() error {
 // supports cancellation
 func (j *Job) runcmd() error {
 	j.mu.Lock()
+	j.StartAt = time.Now()
+	j.updatelastActivity()
 	ctx, cancel := prepareContext(j.ctx, j.TTR)
 	defer cancel()
 	// Use shell wrapper
@@ -519,10 +521,6 @@ func (j *Job) runcmd() error {
 // Run job
 // return error in case we have exit code greater then 0
 func (j *Job) Run() error {
-	j.mu.Lock()
-	j.StartAt = time.Now()
-	j.updatelastActivity()
-	j.mu.Unlock()
 	err := j.runcmd()
 	j.mu.Lock()
 	defer j.mu.Unlock()

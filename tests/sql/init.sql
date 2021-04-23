@@ -19,13 +19,6 @@ for i in range(3,100):
 INSERT INTO jobs (ttr) VALUES(1);
 INSERT INTO jobs (ttr) VALUES(2);
 INSERT INTO jobs (ttr) VALUES(3);
-INSERT INTO jobs (ttr) VALUES(4);
-INSERT INTO jobs (ttr) VALUES(5);
-INSERT INTO jobs (ttr) VALUES(6);
-INSERT INTO jobs (ttr) VALUES(7);
-INSERT INTO jobs (ttr) VALUES(8);
-INSERT INTO jobs (ttr) VALUES(9);
-INSERT INTO jobs (ttr) VALUES(10);
 
 
 /*
@@ -33,11 +26,4 @@ INSERT INTO jobs (ttr) VALUES(10);
 
  for i in range(101,201):
     print(f"INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');")
- */
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
-INSERT INTO jobs (ttr, cmd) VALUES(100,'sleep 100');
+*/

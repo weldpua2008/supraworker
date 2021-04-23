@@ -6,8 +6,8 @@ from flask import request
 import traceback
 import mysql.connector
 
-from flask import Blueprint, current_app, make_response, Response
-from flask_restx import Namespace, Model, Api, Resource, fields, reqparse
+from flask import Blueprint, current_app
+from flask_restx import Api, Resource, reqparse
 
 logger = logging.getLogger(__name__)
 job_page = Blueprint('job_page', __name__)
@@ -80,7 +80,7 @@ class NewJobList(Resource):
         parser.add_argument('limit', required=False, type=int, default=1,
                             help="Limit results")
         args = parser.parse_args()
-        limit = max(int(args['limit']), 1)
+        # limit = max(int(args['limit']), 1)
         status_code = 500
         ret = []
         if isinstance(args.get('jobflowid', ''), str) and args.get('jobflowid', ''):
@@ -105,7 +105,9 @@ class NewJobList(Resource):
                 query(
                     f"UPDATE jobs SET status='propogated' WHERE id={elem['job_uid']} AND status IN ( 'pending','PENDING')")
 
-                query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 300)},'sleep {randint(1, 390)}');")
+            if len(query("SELECT * from jobs WHERE status in ('pending', 'PENDING')")) < 1:
+                for i in range(0, (len(ret) + 11)):
+                    query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 10)},'sleep {randint(1, 10)}');")
 
             logger.info(f"New {len(ret)} jobs")
             status_code = 200
@@ -226,7 +228,8 @@ class RunJob(Resource):
         }
         try:
             status_code = 200
-            query(f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_uid']} AND status IN ( '{previous_job_status}','PENDING', 'propogated')" )
+            query(
+                f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_uid']} AND status IN ( '{previous_job_status}','PENDING', 'propogated')")
 
             for row in query(f"SELECT * from jobs WHERE id='{args['job_uid']}'"):
                 _ret = {

@@ -126,7 +126,7 @@ var rootCmd = &cobra.Command{
 				log.Tracef("StartGenerateJobs returned error %v", err)
 			}
 		}()
-		if numWorkers < 1 {
+		if config.C.NumWorkers > 0 {
 			numWorkers = config.C.NumWorkers
 		}
 		if numWorkers < 1 {
