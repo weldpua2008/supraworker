@@ -239,6 +239,7 @@ func (j *Job) incrementCounter() {
 	defer j.streamsMu.Unlock()
 	j.counter++
 }
+
 // Checks quota for the buffer
 // True - need to send
 // False - can wait
@@ -344,14 +345,14 @@ func (j *Job) runcmd() error {
 
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
-		msg:=fmt.Sprintf("Cannot initial stdout %s\n", err)
+		msg := fmt.Sprintf("Cannot initial stdout %s\n", err)
 		_ = j.AppendLogStream([]string{msg})
 		return fmt.Errorf(msg)
 	}
 
 	stderr, err := j.cmd.StderrPipe()
 	if err != nil {
-		msg:=fmt.Sprintf("Cannot initial stderr %s\n", err)
+		msg := fmt.Sprintf("Cannot initial stderr %s\n", err)
 		_ = j.AppendLogStream([]string{msg})
 		return fmt.Errorf(msg)
 	}
@@ -389,7 +390,7 @@ func (j *Job) runcmd() error {
 	go j.resetCounterLoop(resetCtx, per)
 
 	// copies stdout/stderr to to streaming API
-	copyStd := func(data *io.ReadCloser, processed chan <- bool ) {
+	copyStd := func(data *io.ReadCloser, processed chan<- bool) {
 		defer func() {
 			processed <- true
 		}()
@@ -496,7 +497,7 @@ func (j *Job) Run() error {
 	err := j.runcmd()
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if err!=nil &&j.exitError == nil {
+	if err != nil && j.exitError == nil {
 		j.exitError = err
 	}
 	j.updatelastActivity()
