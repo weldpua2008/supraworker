@@ -53,7 +53,6 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 			jobsDuration.Observe(dur.Seconds())
 		}
 
-
 		//if err := j.Run(); err != nil {
 		//	log.Infof("Job %v failed with %s", j.Id, err)
 		//	if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
