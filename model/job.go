@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mitchellh/go-ps"
+	"io"
 	"io/ioutil"
 	"os/exec"
 	"strings"
@@ -193,51 +194,59 @@ func (j *Job) Cancel() (cancelError error) {
 // update your API
 func (j *Job) Failed() (cancelError error) {
 	j.mu.Lock()
-	defer j.mu.Unlock()
-	msg := fmt.Sprintf("[FAILED] Job '%s' is already in terminal state %s", j.Id, j.Status)
-	if !IsTerminalStatus(j.Status) {
-		msg = fmt.Sprintf("[FAILED] Job '%s' moved to state %s", j.Id, j.Status)
-		if errUpdate := j.updateStatus(JOB_STATUS_ERROR); errUpdate != nil {
-			msg = fmt.Sprintf("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
+	defer func() {
+		msg := fmt.Sprintf("[FAILED] Job '%s' is already in terminal state %s", j.Id, j.Status)
+		if !IsTerminalStatus(j.Status) {
+			msg = fmt.Sprintf("[FAILED] Job '%s' moved to state %s", j.Id, j.Status)
+			if errUpdate := j.updateStatus(JOB_STATUS_ERROR); errUpdate != nil {
+				msg = fmt.Sprintf("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
+			}
+			j.updatelastActivity()
 		}
-		j.updatelastActivity()
-	}
-	log.Trace(msg)
-	stage := "jobs.failed"
-	params := j.GetAPIParams(stage)
-	if err, result := DoApiCall(j.ctx, params, stage); err != nil {
-		log.Tracef("failed to update api, got: %s and %s", result, err)
-	}
+		log.Trace(msg)
+		stage := "jobs.failed"
+		params := j.GetAPIParams(stage)
+		if err, result := DoApiCall(j.ctx, params, stage); err != nil {
+			log.Tracef("failed to update api, got: %s and %s", result, err)
+		}
+		// Fix race condition
+		j.mu.Unlock()
+	}()
+
 	return j.stopProcess()
 }
 
-//  for job
-// update your API
-func (j *Job) AppendLogStream(logStream []string) error {
-
+// Appends log stream to the buffer.
+// The content of the buffer will be uploaded to API after:
+//  - high volume log producers - after j.elements
+//	- after buffer is full
+//	- after slow log interval
+func (j *Job) AppendLogStream(logStream []string) (err error) {
 	if j.quotaHit() {
 		<-j.notify
-		_ = j.doSendSteamBuf()
+		err = j.doSendSteamBuf()
 	}
 	j.incrementCounter()
 	j.streamsMu.Lock()
 	j.streamsBuf = append(j.streamsBuf, logStream...)
 	j.streamsMu.Unlock()
-	return nil
+	return err
 }
 
-//count next element
+// count next element
 func (j *Job) incrementCounter() {
 	j.streamsMu.Lock()
 	defer j.streamsMu.Unlock()
 	j.counter++
 }
-
+// Checks quota for the buffer
+// True - need to send
+// False - can wait
 func (j *Job) quotaHit() bool {
 	return (j.counter >= j.elements) || (len(j.streamsBuf) > int(j.elements)) || (j.timeQuote)
 }
 
-//scheduled elements counter refresher
+// Flushes buffer state and resets state of counters.
 func (j *Job) resetCounterLoop(ctx context.Context, after time.Duration) {
 	ticker := time.NewTicker(after)
 	tickerTimeInterval := time.NewTicker(2 * after)
@@ -246,33 +255,24 @@ func (j *Job) resetCounterLoop(ctx context.Context, after time.Duration) {
 		ticker.Stop()
 		tickerTimeInterval.Stop()
 		tickerSlowLogsInterval.Stop()
-		// close(j.notifyLogSent)
 	}()
 	for {
 		select {
 		case <-ctx.Done():
 			_ = j.doSendSteamBuf()
-			// j.notifyLogSent <- struct{}{}
-			// log.Tracef("resetCounterLoop finished for '%v'", j.Id)
 			return
 		case <-j.notifyStopStreams:
 			_ = j.doSendSteamBuf()
-			// j.notifyLogSent <- struct{}{}
-			// log.Tracef("resetCounterLoop finished for '%v'", j.Id)
 			return
 		case <-ticker.C:
-
 			j.streamsMu.Lock()
 			if j.quotaHit() {
-				// log.Tracef("doNotify for '%v'", j.Id)
 				j.timeQuote = false
 				j.doNotify()
-
 			}
 			j.counter = 0
 			j.streamsMu.Unlock()
 		case <-tickerTimeInterval.C:
-
 			j.streamsMu.Lock()
 			j.timeQuote = true
 			j.streamsMu.Unlock()
@@ -344,14 +344,16 @@ func (j *Job) runcmd() error {
 
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
-		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.StdoutPipe %s\n", err)})
-		return fmt.Errorf("cmd.StdoutPipe, %s", err)
+		msg:=fmt.Sprintf("Cannot initial stdout %s\n", err)
+		_ = j.AppendLogStream([]string{msg})
+		return fmt.Errorf(msg)
 	}
 
 	stderr, err := j.cmd.StderrPipe()
 	if err != nil {
-		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.StderrPipe %s\n", err)})
-		return fmt.Errorf("cmd.StderrPipe, %s", err)
+		msg:=fmt.Sprintf("Cannot initial stderr %s\n", err)
+		_ = j.AppendLogStream([]string{msg})
+		return fmt.Errorf(msg)
 	}
 
 	j.mu.Lock()
@@ -386,13 +388,15 @@ func (j *Job) runcmd() error {
 	defer cancel()
 	go j.resetCounterLoop(resetCtx, per)
 
-	// parse stdout
-	// send logs to streaming API
-	go func() {
+	// copies stdout/stderr to to streaming API
+	copyStd := func(data *io.ReadCloser, processed chan <- bool ) {
 		defer func() {
-			notifyStdoutSent <- true
+			processed <- true
 		}()
-		stdOutBuf := bufio.NewReader(stdout)
+		if data == nil {
+			return
+		}
+		stdOutBuf := bufio.NewReader(*data)
 		scanner := bufio.NewScanner(stdOutBuf)
 		scanner.Split(bufio.ScanLines)
 
@@ -401,12 +405,10 @@ func (j *Job) runcmd() error {
 		// We will be able to scan the stdout as long as none of the lines is
 		// larger than 1MB.
 		scanner.Buffer(buf, bufio.MaxScanTokenSize)
-		if stdout == nil {
-			return
-		}
+
 		for scanner.Scan() {
 			if errScan := scanner.Err(); errScan != nil {
-				stdOutBuf.Reset(stdout)
+				stdOutBuf.Reset(*data)
 			}
 
 			msg := scanner.Text()
@@ -414,56 +416,21 @@ func (j *Job) runcmd() error {
 		}
 
 		if scanner.Err() != nil {
-			// stdout.Close()
-			// log.Tracef("Stdout %v unexpected failure: %v", j.Id, scanner.Err())
-			b, err := ioutil.ReadAll(stdout)
+			b, err := ioutil.ReadAll(*data)
 			if err == nil {
 				_ = j.AppendLogStream([]string{string(b), "\n"})
 			} else {
-				log.Tracef("Stdout ReadAll %v unexpected failure: %v", j.Id, err)
-
+				log.Tracef("[Job  %v] Scanner got unexpected failure: %v", j.Id, err)
 			}
 		}
-	}()
-	// parse stderr
-	// send logs to streaming API
-	go func() {
-		defer func() {
-			notifyStderrSent <- true
-		}()
+	}
 
-		stdErrScanner := bufio.NewScanner(stderr)
-		// stdErrScanner.Split(bufio.ScanWords)
-		stdErrScanner.Split(bufio.ScanLines)
-		buf := make([]byte, 0, 64*1024)
-		// The second argument to scanner.Buffer() sets the maximum token size.
-		// We will be able to scan the stdout as long as none of the lines is
-		// larger than 1MB.
+	// send stdout to streaming API
+	go copyStd(&stdout, notifyStdoutSent)
 
-		stdErrScanner.Buffer(buf, bufio.MaxScanTokenSize)
-		if stderr == nil {
-			return
-		}
+	// send stderr to streaming API
+	go copyStd(&stderr, notifyStderrSent)
 
-		stdErrScanner.Split(bufio.ScanLines)
-
-		for stdErrScanner.Scan() {
-			msg := stdErrScanner.Text()
-			_ = j.AppendLogStream([]string{fmt.Sprintf("%s\n", msg)})
-		}
-		if stdErrScanner.Err() != nil {
-			log.Tracef("Stderr %v unexpected failure: %v", j.Id, stdErrScanner.Err())
-			b, err := ioutil.ReadAll(stderr)
-			if err == nil {
-				_ = j.AppendLogStream([]string{string(b), "\n"})
-			} else {
-				log.Tracef("Stderr ReadAll %v unexpected failure: %v", j.Id, err)
-
-			}
-
-		}
-
-	}()
 	<-notifyStdoutSent
 	<-notifyStderrSent
 
@@ -506,7 +473,6 @@ func (j *Job) runcmd() error {
 		signaled := ws.Signaled()
 		signal := ws.Signal()
 		if signaled {
-			//log.Tracef("Signal: %v", signal)
 			err = fmt.Errorf("Signal: %v", signal)
 			j.exitError = err
 		} else if j.Status == JOB_STATUS_CANCELED {
@@ -521,10 +487,18 @@ func (j *Job) runcmd() error {
 // Run job
 // return error in case we have exit code greater then 0
 func (j *Job) Run() error {
+	j.mu.Lock()
+	alreadyRunning := j.Status == JOB_STATUS_IN_PROGRESS || IsTerminalStatus(j.Status)
+	j.mu.Unlock()
+	if alreadyRunning {
+		return fmt.Errorf("Cannot start Job %v with status '%s' ", j.Id, j.Status)
+	}
 	err := j.runcmd()
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	j.exitError = err
+	if err!=nil &&j.exitError == nil {
+		j.exitError = err
+	}
 	j.updatelastActivity()
 	if !IsTerminalStatus(j.Status) {
 		finalStatus := JOB_STATUS_ERROR
@@ -537,9 +511,8 @@ func (j *Job) Run() error {
 		}
 		log.Tracef("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
 	} else {
-		log.Tracef("[RUN] Job '%s' is in terminal state %s", j.Id, j.Status)
+		log.Tracef("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
 	}
-	// <-j.notifyLogSent
 	return err
 }
 

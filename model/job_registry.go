@@ -88,7 +88,7 @@ func (r *Registry) Cleanup() (num int) {
 			} else {
 				log.Tracef("[TIMEOUT] successfully canceled job %s StartAt %v, TTR %v", v.Id, v.StartAt, time.Duration(v.TTR)*time.Millisecond)
 			}
-			log.Infof("Cleanup Job %s => %v", v.StoreKey(), &v)
+			//log.Tracef("Cleanup Job %s => %v", v.StoreKey(), &v)
 
 			delete(r.all, k)
 			num += 1

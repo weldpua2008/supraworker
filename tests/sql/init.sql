@@ -16,9 +16,9 @@ for i in range(3,100):
 
  */
 
-INSERT INTO jobs (ttr) VALUES(1);
-INSERT INTO jobs (ttr) VALUES(2);
-INSERT INTO jobs (ttr) VALUES(3);
+INSERT INTO jobs (ttr, cmd) VALUES(100, 'echo zsdadadasdads;sleep 10');
+INSERT INTO jobs (ttr, cmd) VALUES(200, 'for i in {1..1000};do echo $i;done');
+INSERT INTO jobs (ttr, cmd) VALUES(300, 'echo 12312 >&2;sleep 1000');
 
 
 /*

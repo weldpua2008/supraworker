@@ -88,7 +88,7 @@ class NewJobList(Resource):
 
         try:
 
-            for row in query("SELECT * from jobs WHERE status in ('pending', 'PENDING') LIMIT 10"):
+            for row in query("SELECT * from jobs WHERE status in ('pending', 'PENDING') ORDER BY id LIMIT 10"):
                 ret.append({
                     **row,
                     'job_id': str(row['id']),

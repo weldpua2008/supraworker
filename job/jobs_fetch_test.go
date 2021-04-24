@@ -134,7 +134,7 @@ func TestGenerateJobs(t *testing.T) {
 		}
 
 		if job.CMD != CMD {
-			t.Errorf("want %s, got %v", want, got)
+			t.Errorf("want %s, got %s", want, got)
 		}
 		job.Status = model.JOB_STATUS_CANCELED
 		// stop loop
