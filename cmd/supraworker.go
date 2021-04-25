@@ -30,6 +30,7 @@ import (
 var (
 	verbose   bool
 	traceFlag bool
+	pprofFlag bool
 	// epsagonTraceFlag bool
 	log            = logrus.WithFields(logrus.Fields{"package": "cmd"})
 	numWorkers int = 0
@@ -45,6 +46,7 @@ func init() {
 	// rootCmd.PersistentFlags().BoolVarP(&epsagonTraceFlag, "epsagon", "e", false, "Enable Epsagon Tracing")
 
 	rootCmd.PersistentFlags().BoolVarP(&traceFlag, "trace", "t", false, "trace")
+	rootCmd.PersistentFlags().BoolVarP(&pprofFlag, "pprof", "p", false, "pprof")
 	rootCmd.PersistentFlags().StringVar(&config.ClientId, "clientId", "", "ClientId (default is supraworker)")
 
 	rootCmd.PersistentFlags().IntVarP(&numWorkers, "workers", "w", 5, "Number of workers")
@@ -116,10 +118,23 @@ var rootCmd = &cobra.Command{
 		// 	communicator.SetEpsagonHttpWrapper()
 		// }
 
-		addr := config.GetStringTemplatedDefault("healthcheck.listen", ":8080")
-		healthCheckURI := config.GetStringTemplatedDefault("healthcheck.uri", "/health/is_alive")
-		srv := metrics.StartHealthCheck(addr, healthCheckURI)
-		defer metrics.WaitForShutdown(ctx, srv)
+		healthCheckAddr := config.GetStringTemplatedDefault("healthcheck.listen", ":8080")
+		healthCheckUri := config.GetStringTemplatedDefault("healthcheck.uri", "/health/is_alive")
+		metrics.StartHealthCheck(healthCheckAddr, healthCheckUri)
+
+		prometheusAddr := config.GetStringTemplatedDefault("prometheus.listen", ":8080")
+		prometheusUri := config.GetStringTemplatedDefault("prometheus.uri", "/metrics")
+		metrics.AddPrometheusMetricsHandler(prometheusAddr, prometheusUri)
+		if pprofFlag || traceFlag {
+			pprofAddr := config.GetStringTemplatedDefault("pprof.listen", ":8080")
+			pprofUri := config.GetStringTemplatedDefault("pprof.uri", "/debug/pprof")
+			metrics.AddPProf(pprofAddr, pprofUri)
+
+		}
+		//srv := metrics.StartHealthCheck(addr, healthCheckURI)
+		//defer metrics.WaitForShutdown(ctx, srv)
+		metrics.StartAll()
+		defer metrics.StopAll(ctx)
 
 		go func() {
 			if err := job.StartGenerateJobs(ctx, jobs, apiCallDelay); err != nil {

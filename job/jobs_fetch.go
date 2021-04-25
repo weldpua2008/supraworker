@@ -121,6 +121,10 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
 									TTR = uint64((time.Duration(i) * time.Minute).Milliseconds())
 								}
+							case "ttl_msec", "ttr_msec":
+								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
+									TTR = uint64((time.Duration(i) * time.Millisecond).Milliseconds())
+								}
 							case "stopDate", "stopdate", "stop_date", "stop":
 								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
 									now := time.Now()

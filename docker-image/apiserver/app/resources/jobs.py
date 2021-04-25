@@ -98,7 +98,8 @@ class NewJobList(Resource):
                     'extra_run_id': '1',
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat(),
-                    'ttr': int(row['ttr'])
+                    'ttr': int(row['ttr']/1000),
+                    'ttr_msec': int(row['ttr'])
                 })
             time.sleep(randint(1, 3))
             for elem in ret:
@@ -107,7 +108,7 @@ class NewJobList(Resource):
 
             if len(query("SELECT * from jobs WHERE status in ('pending', 'PENDING')")) < 1:
                 for i in range(0, (len(ret) + 11)):
-                    query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 10)},'sleep {randint(1, 10)}');")
+                    query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 5000)},'sleep {randint(1, 5000)/1000}');")
 
             logger.info(f"New {len(ret)} jobs")
             status_code = 200

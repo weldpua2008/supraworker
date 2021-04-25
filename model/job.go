@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os/exec"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"syscall"
@@ -228,8 +229,9 @@ func (j *Job) AppendLogStream(logStream []string) (err error) {
 	}
 	j.incrementCounter()
 	j.streamsMu.Lock()
+	defer j.streamsMu.Unlock()
 	j.streamsBuf = append(j.streamsBuf, logStream...)
-	j.streamsMu.Unlock()
+
 	return err
 }
 
@@ -288,6 +290,7 @@ func (j *Job) doNotify() {
 	select {
 	case j.notify <- struct{}{}:
 	default:
+		return
 	}
 }
 
@@ -332,16 +335,35 @@ func (j *Job) doSendSteamBuf() error {
 // returns error
 // supports cancellation
 func (j *Job) runcmd() error {
+	//ctx:= context.Background()
+	//defer pprof.SetGoroutineLabels(ctx)
+	//ctx = pprof.WithLabels(ctx, pprof.Labels("worker", fmt.Sprintf("worker-%d", id)))
+	//pprof.SetGoroutineLabels(ctx)
+
 	j.mu.Lock()
 	j.StartAt = time.Now()
 	j.updatelastActivity()
-	ctx, cancel := prepareContext(j.ctx, j.TTR)
+	ctxOriginal, cancel := prepareContext(j.ctx, j.TTR)
+	defer pprof.SetGoroutineLabels(ctxOriginal)
 	defer cancel()
+	ctx := pprof.WithLabels(ctxOriginal, pprof.Labels("job", fmt.Sprintf("jib-%s", j.StoreKey())))
+	pprof.SetGoroutineLabels(ctxOriginal)
+
 	// Use shell wrapper
 	shell, args := CmdWrapper(j.RunAs, j.UseSHELL, j.CMD)
 	j.cmd = execCommandContext(ctx, shell, args...)
 	j.cmd.Env = MergeEnvVars(j.CmdENV)
 	j.mu.Unlock()
+
+	// reset backpressure counter
+	per := 5 * time.Second
+	if j.ResetBackPressureTimer.Nanoseconds() > 0 {
+		per = j.ResetBackPressureTimer
+	}
+	resetCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go j.resetCounterLoop(resetCtx, per)
+
 
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
@@ -380,14 +402,7 @@ func (j *Job) runcmd() error {
 	notifyStdoutSent := make(chan bool, 1)
 	notifyStderrSent := make(chan bool, 1)
 
-	// reset backpressure counter
-	per := 5 * time.Second
-	if j.ResetBackPressureTimer.Nanoseconds() > 0 {
-		per = j.ResetBackPressureTimer
-	}
-	resetCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go j.resetCounterLoop(resetCtx, per)
+
 
 	// copies stdout/stderr to to streaming API
 	copyStd := func(data *io.ReadCloser, processed chan<- bool) {
@@ -492,7 +507,7 @@ func (j *Job) Run() error {
 	alreadyRunning := j.Status == JOB_STATUS_IN_PROGRESS || IsTerminalStatus(j.Status)
 	j.mu.Unlock()
 	if alreadyRunning {
-		return fmt.Errorf("Cannot start Job %v with status '%s' ", j.Id, j.Status)
+		return fmt.Errorf("Cannot start Job %s with status '%s' ", j.Id, j.Status)
 	}
 	err := j.runcmd()
 	j.mu.Lock()

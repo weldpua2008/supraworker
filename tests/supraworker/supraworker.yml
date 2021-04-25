@@ -18,11 +18,6 @@ jobs:
         - "job_uid"
         - "run_uid"
         - "extra_run_id"
-#    params:
-#      job_uid: 1
-#      run_uid: 1
-#      extra_run_id: 1
-
   get:
     url: "http://api:8080/api/v1/jobs/fetch_new"
     method: post

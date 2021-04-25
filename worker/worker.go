@@ -1,12 +1,15 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"github.com/weldpua2008/supraworker/job"
 	"github.com/weldpua2008/supraworker/metrics"
 	"github.com/weldpua2008/supraworker/model"
 	"sync"
 	"time"
+	"runtime/pprof"
+
 )
 
 // StartWorker run goroutine for executing commands and reporting to your API
@@ -14,6 +17,12 @@ import (
 // pointer.
 func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	// On return, notify the WaitGroup that we're done.
+	// add pprof labels for more useful profiles
+	ctx:= context.Background()
+	defer pprof.SetGoroutineLabels(ctx)
+	ctx = pprof.WithLabels(ctx, pprof.Labels("worker", fmt.Sprintf("worker-%d", id)))
+	pprof.SetGoroutineLabels(ctx)
+
 	defer func() {
 		wg.Done()
 		log.Debugf("Worker %d finished ", id)
