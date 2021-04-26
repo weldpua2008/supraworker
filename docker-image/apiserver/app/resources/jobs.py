@@ -88,7 +88,7 @@ class NewJobList(Resource):
 
         try:
 
-            for row in query("SELECT * from jobs WHERE status in ('pending', 'PENDING') ORDER BY id LIMIT 1001"):
+            for row in query("SELECT * from jobs WHERE status in ('pending', 'PENDING') ORDER BY id LIMIT 100"):
                 del(row['ttr'])
                 ret.append({
                     **row,

@@ -99,7 +99,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				// TODO: customize timeout
 				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CTX_REQUEST_TIMEOUT, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
 					metrics.FetchNewJobLatency.WithLabelValues("api_get").Observe(float64(time.Since(start).Nanoseconds()))
-
+					//if len(jobsData) > 128 {
+					//	log.Tracef("Parsing %d new jobs from response", len(jobsData))
+					//}
 					for _, jobResponse := range jobsData {
 						var JobId string
 						var CMD string
