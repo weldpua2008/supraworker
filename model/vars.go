@@ -5,6 +5,10 @@ import (
 	"os/exec"
 )
 
+const (
+	CTX_REQUEST_TIMEOUT = "ctx_req_timeout"
+)
+
 var (
 	execCommandContext = exec.CommandContext
 	// FetchNewJobAPIURL is URL for pulling new jobs

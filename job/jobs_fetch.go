@@ -64,7 +64,7 @@ func NewApiJobRequest() *ApiJobRequest {
 // StartGenerateJobs goroutine for getting jobs from API with internal
 // it expects `model.FetchNewJobAPIURL`
 // exists on kill
-func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.Duration) error {
+func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.Duration, maxRequestTimeout time.Duration) error {
 	if len(model.FetchNewJobAPIURL) < 1 {
 		close(jobs)
 		log.Warn("Please provide URL to fetch new Jobs")
@@ -96,7 +96,8 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				return
 			case <-tickerGenerateJobs.C:
 				start := time.Now()
-				if err, jobsData := model.NewRemoteApiRequest(ctx, "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
+				// TODO: customize timeout
+				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CTX_REQUEST_TIMEOUT, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
 					metrics.FetchNewJobLatency.WithLabelValues("api_get").Observe(float64(time.Since(start).Nanoseconds()))
 
 					for _, jobResponse := range jobsData {
@@ -223,7 +224,8 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 
 				stage := "jobs.cancelation"
 				params := model.GetAPIParamsFromSection(stage)
-				if err, jobsCancellationData := model.DoApiCall(ctx, params, stage); err != nil {
+				// TODO: Customize timeout
+				if err, jobsCancellationData := model.DoApiCall(context.WithValue(ctx, model.CTX_REQUEST_TIMEOUT, maxRequestTimeout), params, stage); err != nil {
 					metrics.FetchCancelLatency.WithLabelValues("failed_query").Observe(float64(time.Since(start).Nanoseconds()))
 					log.Tracef("failed to update api, got: %s and %s", jobsCancellationData, err)
 				} else {

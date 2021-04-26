@@ -107,8 +107,15 @@ func DoApiCall(ctx context.Context, params map[string]string, stage string) (err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{Timeout: time.Duration(15 * time.Second)}
+	defaultRequestTimeout := 60 * time.Second
+	if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
+			defaultRequestTimeout = duration
+		} else {
+			return fmt.Errorf("Cannot parse duration %v", errParseDuration), nil
+		}
+	}
+	client := &http.Client{Timeout: defaultRequestTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("Failed to send request due %s", err), nil
@@ -119,7 +126,7 @@ func DoApiCall(ctx context.Context, params map[string]string, stage string) (err
 		return fmt.Errorf("error read response body got %s", err), nil
 	}
 	if (resp.StatusCode > 202) || (resp.StatusCode < 200) {
-		log.Trace(fmt.Sprintf("\nMaking request %s  to %s \nwith %s\nStatusCode %d Response %s\n", method, url, jsonStr, resp.StatusCode, body))
+		log.Tracef("\nMaking request %s  to %s \nwith %s\nStatusCode %d Response %s\n", method, url, jsonStr, resp.StatusCode, body)
 	}
 	err = json.Unmarshal(body, &rawResponseArray)
 	if err != nil {
@@ -166,8 +173,16 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	defaultRequestTimeout := 60 * time.Second
+	if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
+			defaultRequestTimeout = duration
+		} else {
+			return fmt.Errorf("Cannot parse duration %v", errParseDuration), nil
+		}
+	}
 
-	client := &http.Client{Timeout: time.Duration(15 * time.Second)}
+	client := &http.Client{Timeout: defaultRequestTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("Failed to send request due %s", err), nil

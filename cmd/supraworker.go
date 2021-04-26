@@ -34,6 +34,10 @@ var (
 	// epsagonTraceFlag bool
 	log            = logrus.WithFields(logrus.Fields{"package": "cmd"})
 	numWorkers int = 0
+
+	// maxRequestTimeout is timeout for the cancellation and fetch requests.
+	// it's high in order to fetch a huge jsons or when the network is slow.
+	maxRequestTimeout = 600 * time.Second
 )
 
 const defaultNumWorkers = 5
@@ -75,7 +79,6 @@ var rootCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel() // cancel when we are getting the kill signal or exit
 		var wg sync.WaitGroup
-		jobs := make(chan *model.Job, 1)
 		log.Infof("Starting %s\n", FormattedVersion())
 		go func() {
 			sig := <-stopChan
@@ -136,17 +139,19 @@ var rootCmd = &cobra.Command{
 		metrics.StartAll()
 		defer metrics.StopAll(ctx)
 
-		go func() {
-			if err := job.StartGenerateJobs(ctx, jobs, apiCallDelay); err != nil {
-				log.Tracef("StartGenerateJobs returned error %v", err)
-			}
-		}()
 		if config.C.NumWorkers > 0 {
 			numWorkers = config.C.NumWorkers
 		}
 		if numWorkers < 1 {
 			numWorkers = defaultNumWorkers
 		}
+		jobs := make(chan *model.Job, numWorkers)
+
+		go func() {
+			if err := job.StartGenerateJobs(ctx, jobs, apiCallDelay, maxRequestTimeout); err != nil {
+				log.Tracef("StartGenerateJobs returned error %v", err)
+			}
+		}()
 		config.C.NumWorkers = 0
 		for w := 1; w <= numWorkers; w++ {
 			wg.Add(1)
