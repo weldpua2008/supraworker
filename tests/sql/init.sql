@@ -15,11 +15,11 @@ for i in range(3,100):
     print(f"INSERT INTO jobs (ttr) VALUES({i});")
 
  */
-
+/* Example:
 INSERT INTO jobs (ttr, cmd) VALUES(100, 'echo zsdadadasdads;sleep 10');
 INSERT INTO jobs (ttr, cmd) VALUES(200, 'for i in {1..1000};do echo $i;done');
 INSERT INTO jobs (ttr, cmd) VALUES(300, 'echo 12312 >&2;sleep 1000');
-
+* /
 
 /*
  generating jobs for cancellation

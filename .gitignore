@@ -28,3 +28,4 @@ bin/supraworker-xc
 
 # pprof files
 pprof.supraworker.*.pb.gz
+*.pyc
