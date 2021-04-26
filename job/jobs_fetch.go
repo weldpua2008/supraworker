@@ -106,20 +106,22 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						var ExtraRunUID string
 						var TTR uint64
 						var EnvVar []string
+						//metrics.FetchNewJobLatency.WithLabelValues("new_job_response").Observe(float64(time.Since(start).Nanoseconds()))
 
 						for key, value := range jobResponse {
+
 							switch strings.ToLower(key) {
 							case "id", "jobid", "job_id", "job_uid":
 								JobId = fmt.Sprintf("%v", value)
 							case "cmd", "command", "execute":
 								CMD = fmt.Sprintf("%v", value)
-							case "ttl", "ttr", "ttl_sec", "ttl_seconds":
-								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
-									TTR = uint64((time.Duration(i) * time.Second).Milliseconds())
-								}
 							case "ttl_minutes", "ttr_minutes", "ttl_min", "ttr_min":
 								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
 									TTR = uint64((time.Duration(i) * time.Minute).Milliseconds())
+								}
+							case "ttl", "ttr", "ttl_sec", "ttl_seconds":
+								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
+									TTR = uint64((time.Duration(i) * time.Second).Milliseconds())
 								}
 							case "ttl_msec", "ttr_msec":
 								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
@@ -127,16 +129,16 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 								}
 							case "stopDate", "stopdate", "stop_date", "stop":
 								if i, err := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64); err == nil {
-									now := time.Now()
-									sec := now.Unix() // number of seconds since January 1, 1970 UTC
+									sec := time.Now().Unix() // number of seconds since January 1, 1970 UTC
 									if (i - sec) > 0 {
 										TTR = uint64((time.Duration(i-sec) * time.Second).Milliseconds())
 									}
-
 								}
 							case "runid", "runuid", "run_id", "run_uid":
 								RunUID = fmt.Sprintf("%v", value)
-							// Excpects list of string or string in key=value format
+							// Expects one of the following:
+							//	- list of string
+							//	- string in key=value format
 							case "env", "vars", "environment":
 								if env, ok := value.([]string); ok {
 									EnvVar = env
@@ -148,13 +150,14 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 											EnvVar = append(EnvVar, env)
 										}
 									}
-
 								}
 
 							case "extrarunid", "extrarunuid", "extrarun_id", "extrarun_uid", "extra_run_id", "extra_run_uid":
 								ExtraRunUID = fmt.Sprintf("%v", value)
 							}
 						}
+						//metrics.FetchNewJobLatency.WithLabelValues("job_response_enriched").Observe(float64(time.Since(start).Nanoseconds()))
+
 						if len(JobId) < 1 {
 							continue
 						}
@@ -168,20 +171,19 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 							TTR = uint64((time.Duration(8*3600) * time.Second).Milliseconds())
 						}
 						job.TTR = TTR
-						metrics.FetchNewJobLatency.WithLabelValues("create_new_job").Observe(float64(time.Since(start).Nanoseconds()))
+						job.CmdENV = EnvVar
+						metrics.FetchNewJobLatency.WithLabelValues("new_job_created").Observe(float64(time.Since(start).Nanoseconds()))
 
 						if JobsRegistry.Add(job) {
-							metrics.FetchNewJobLatency.WithLabelValues("append_to_registry").Observe(float64(time.Since(start).Nanoseconds()))
-
-							jobsProcessed.Inc()
+							metrics.FetchNewJobLatency.WithLabelValues("new_job_appended_to_registry").Observe(float64(time.Since(start).Nanoseconds()))
+							metrics.JobsProcessed.Inc()
 							jobs <- job
 							j += 1
 							//log.Tracef("sent job id %v ", job.Id)
+						} else {
+							//log.Trace(fmt.Sprintf("Duplicated job id %v ", job.Id))
+							metrics.JobsFetchDuplicates.Inc()
 						}
-						job.CmdENV = EnvVar
-						// else {
-						// 	log.Trace(fmt.Sprintf("Duplicated job id %v ", job.Id))
-						// }
 					}
 				} else {
 					log.Tracef("Failed fetch a new Jobs portion due %v ", err)
@@ -212,10 +214,10 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				start := time.Now()
 				if n := JobsRegistry.Cleanup(); n > 0 {
 					j += n
-					log.Tracef("Cleared %v/%v jobs", n, j)
-					JobsRegistry.Map(func(key string, job *model.Job) {
-						log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
-					})
+					log.Tracef("Cleared %d/%d jobs", n, j)
+					//JobsRegistry.Map(func(key string, job *model.Job) {
+					//	log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
+					//})
 				}
 				metrics.FetchCancelLatency.WithLabelValues("registry_cleanup").Observe(float64(time.Since(start).Nanoseconds()))
 
@@ -223,7 +225,6 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				params := model.GetAPIParamsFromSection(stage)
 				if err, jobsCancellationData := model.DoApiCall(ctx, params, stage); err != nil {
 					metrics.FetchCancelLatency.WithLabelValues("failed_query").Observe(float64(time.Since(start).Nanoseconds()))
-
 					log.Tracef("failed to update api, got: %s and %s", jobsCancellationData, err)
 				} else {
 
@@ -245,14 +246,14 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						if len(JobId) < 1 {
 							continue
 						}
-						jobCancelationId := model.StoreKey(JobId, RunUID, ExtraRunUID)
-						if jobCancelation, ok := JobsRegistry.Record(jobCancelationId); ok {
-							jobsCancelled.Inc()
+						jobCancellationId := model.StoreKey(JobId, RunUID, ExtraRunUID)
+						if jobCancelation, ok := JobsRegistry.Record(jobCancellationId); ok {
+							metrics.JobsCancelled.Inc()
 							if err := jobCancelation.Cancel(); err != nil {
-								log.Tracef("Can't cancel '%s' got %s ", jobCancelationId, err)
+								log.Tracef("Can't cancel '%s' got %s ", jobCancellationId, err)
 							}
 						} /* else {
-							log.Tracef("Can't find job key '%s' for cancelation: %s extra %s runid %s", jobCancelationId, JobId, ExtraRunUID, RunUID)
+							log.Tracef("Can't find job key '%s' for cancelation: %s extra %s runid %s", jobCancellationId, JobId, ExtraRunUID, RunUID)
 							for _, rJob:= range JobsRegistry.All(){
 								if len(rJob.Id) < 2 {
 									continue

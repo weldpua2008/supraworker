@@ -1,6 +1,6 @@
 clientId: "exampleclient"
-workers: 10
-api_delay_sec: 2
+workers: 10000
+api_delay_sec: 1
 headers:
   "Content-type": "application/json"
 

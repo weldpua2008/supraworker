@@ -53,6 +53,18 @@ var (
 			"operation",
 		},
 	)
+	JobsFetchDuplicates = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "supraworker_fetch_jobs_duplicates_total",
+		Help: "The total number of fetched duplicated jobs",
+	})
+	JobsProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "supraworker_fetch_jobs_total",
+		Help: "The total number of fetched jobs",
+	})
+	JobsCancelled = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "supraworker_jobs_cancelled_total",
+		Help: "The total number of CANCELLED jobs",
+	})
 
 //
 //	ApiCallsStatistics = promauto.NewCounterVec(

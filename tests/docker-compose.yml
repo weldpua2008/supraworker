@@ -73,5 +73,7 @@ services:
       - ./grafana-settings/datasources.yml:/etc/grafana/provisioning/datasources/datasource.yaml
       - ./grafana-settings/dashboard.json:/var/lib/grafana/dashboards/dashboards/dashboard.json
       - ./grafana-settings/provisioner.yaml:/etc/grafana/provisioning/dashboards/provisioner.yaml
+      - ./grafana-settings/go-metrics.json:/var/lib/grafana/dashboards/dashboards/go-metrics.json
+
 #      - ./grafana:/var/lib/grafana
 #      - ./grafana/etc:/etc/grafana
