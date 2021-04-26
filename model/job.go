@@ -364,7 +364,6 @@ func (j *Job) runcmd() error {
 	defer cancel()
 	go j.resetCounterLoop(resetCtx, per)
 
-
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
 		msg := fmt.Sprintf("Cannot initial stdout %s\n", err)
@@ -401,8 +400,6 @@ func (j *Job) runcmd() error {
 	}
 	notifyStdoutSent := make(chan bool, 1)
 	notifyStderrSent := make(chan bool, 1)
-
-
 
 	// copies stdout/stderr to to streaming API
 	copyStd := func(data *io.ReadCloser, processed chan<- bool) {

@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
+	"net/http/pprof"
 	"sync"
 	"time"
-	"net/http/pprof"
-
 )
 
 // SrvSession stores all information about server
@@ -106,8 +105,6 @@ func (s *SrvSession) AddHandleFunc(uri string, h func(http.ResponseWriter, *http
 	s.mux.HandleFunc(uri, h)
 }
 
-
-
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "OK")
@@ -122,13 +119,13 @@ func AddPrometheusMetricsHandler(listenAddr string, uri string) {
 func AddPProf(listenAddr string, uri string) {
 	log.Tracef("Start pprof at %s [%s]", uri, listenAddr)
 	srv := Get(listenAddr)
-	srv.AddHandleFunc(fmt.Sprintf("%s/",uri), pprof.Index)
-	srv.AddHandleFunc(fmt.Sprintf("%s/cmdline",uri), pprof.Cmdline)
-	srv.AddHandleFunc(fmt.Sprintf("%s/profile",uri), pprof.Profile)
-	srv.AddHandleFunc(fmt.Sprintf("%s/symbol",uri), pprof.Symbol)
-	srv.AddHandleFunc(fmt.Sprintf("%s/trace",uri), pprof.Trace)
+	srv.AddHandleFunc(fmt.Sprintf("%s/", uri), pprof.Index)
+	srv.AddHandleFunc(fmt.Sprintf("%s/cmdline", uri), pprof.Cmdline)
+	srv.AddHandleFunc(fmt.Sprintf("%s/profile", uri), pprof.Profile)
+	srv.AddHandleFunc(fmt.Sprintf("%s/symbol", uri), pprof.Symbol)
+	srv.AddHandleFunc(fmt.Sprintf("%s/trace", uri), pprof.Trace)
 
-	srv.srv.ReadTimeout =  120 * time.Second
+	srv.srv.ReadTimeout = 120 * time.Second
 	srv.srv.WriteTimeout = 120 * time.Second
 }
 
