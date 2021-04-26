@@ -224,7 +224,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 
 				stage := "jobs.cancelation"
 				params := model.GetAPIParamsFromSection(stage)
-				// TODO: Customize timeout
+
 				if err, jobsCancellationData := model.DoApiCall(context.WithValue(ctx, model.CTX_REQUEST_TIMEOUT, maxRequestTimeout), params, stage); err != nil {
 					metrics.FetchCancelLatency.WithLabelValues("failed_query").Observe(float64(time.Since(start).Nanoseconds()))
 					log.Tracef("failed to update api, got: %s and %s", jobsCancellationData, err)

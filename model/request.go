@@ -108,11 +108,14 @@ func DoApiCall(ctx context.Context, params map[string]string, stage string) (err
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	defaultRequestTimeout := 60 * time.Second
-	if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
-		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
-			defaultRequestTimeout = duration
-		} else {
-			return fmt.Errorf("Cannot parse duration %v", errParseDuration), nil
+	if ctx != nil {
+
+		if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+			if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
+				defaultRequestTimeout = duration
+			} else {
+				return fmt.Errorf("Cannot parse duration %v", errParseDuration), nil
+			}
 		}
 	}
 	client := &http.Client{Timeout: defaultRequestTimeout}
@@ -174,11 +177,13 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	defaultRequestTimeout := 60 * time.Second
-	if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
-		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
-			defaultRequestTimeout = duration
-		} else {
-			return fmt.Errorf("Cannot parse duration %v", errParseDuration), nil
+	if ctx != nil {
+		if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+			if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
+				defaultRequestTimeout = duration
+			} else {
+				return fmt.Errorf("Cannot parse duration %v", errParseDuration), nil
+			}
 		}
 	}
 

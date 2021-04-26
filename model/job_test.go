@@ -46,7 +46,7 @@ func TestStreamApi(t *testing.T) {
 		if err != nil {
 			t.Errorf("ReadAll %s", err)
 		}
-		got = string(fmt.Sprintf("%s", b))
+		got = fmt.Sprintf("%s", b)
 		notifyStdoutSent <- true
 	}))
 	defer func() {
