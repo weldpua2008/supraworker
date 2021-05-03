@@ -70,7 +70,7 @@ func TestExecuteJobContextCancel(t *testing.T) {
 	wg.Add(1)
 	go StartWorker(0, jobs, &wg)
 
-	jobOne := model.NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo  && sleep 100 &&exit 0"))
+	jobOne := model.NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo && sleep 100 &&exit 0"))
 	jobOne.SetContext(ctx)
 	jobOne.TTR = 10000000
 

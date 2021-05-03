@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"github.com/sirupsen/logrus"
 	"os/exec"
 )
@@ -10,6 +11,8 @@ const (
 )
 
 var (
+	ErrFailedSendRequest = errors.New("Failed to send request")
+
 	execCommandContext = exec.CommandContext
 	// FetchNewJobAPIURL is URL for pulling new jobs
 	FetchNewJobAPIURL string
@@ -35,11 +38,12 @@ type Jobber interface {
 }
 
 const (
-	JOB_STATUS_PENDING     = "pending"
-	JOB_STATUS_IN_PROGRESS = "in_progress"
-	JOB_STATUS_SUCCESS     = "success"
-	JOB_STATUS_ERROR       = "error"
-	JOB_STATUS_CANCELED    = "canceled"
+	JOB_STATUS_PENDING     = "PENDING"
+	JOB_STATUS_IN_PROGRESS = "RUNNING"
+	JOB_STATUS_SUCCESS     = "SUCCESS"
+	JOB_STATUS_ERROR       = "ERROR"
+	JOB_STATUS_CANCELED    = "CANCELED"
+	JOB_STATUS_TIMEOUT     = "TIMEOUT"
 )
 
 func init() {

@@ -1,5 +1,5 @@
 import logging
-from random import randint
+from random import randint, getrandbits
 import time
 from werkzeug.exceptions import BadRequest
 from flask import request
@@ -20,6 +20,11 @@ jobs_api = Api(
     description='The Jobs API allows you to run jobs.',
     url_prefix='/job_api'
 )
+
+
+def flaky():
+    if bool(getrandbits(1)):
+        raise RuntimeError("Flaky response")
 
 
 def query(sql, params=()):
@@ -61,7 +66,7 @@ class NewJobList(Resource):
 
     @jobs_api.doc(params={
         'jobflowid': 'The canonical Run identifier for the EMR Cluster',
-        'run_uid': 'The canonical Run identifier for the request',
+        'run_id': 'The canonical Run identifier for the request',
         'limit': 'Max limit'
     })
     def get(self):
@@ -71,11 +76,8 @@ class NewJobList(Resource):
             pass
 
         parser = reqparse.RequestParser()
-        parser.add_argument('run_uid', required=False, type=str, default='',
-                            help="The canonical identifier for the request")
-        parser.add_argument('jobFlowId', required=False, type=str,
-                            help="EMR jobFlowId")
-        parser.add_argument('jobflowid', required=False, type=str,
+
+        parser.add_argument('jobflowid', required=True, type=str,
                             help="EMR jobFlowId")
         parser.add_argument('limit', required=False, type=int, default=1,
                             help="Limit results")
@@ -88,31 +90,24 @@ class NewJobList(Resource):
 
         try:
 
-            for row in query("SELECT * from jobs WHERE status in ('pending', 'PENDING') ORDER BY id LIMIT 100"):
-                # del(row['ttr'])
-                # del(row['cmd'])
+            for row in query("SELECT * from jobs WHERE status in ('PENDING') ORDER BY id "):
                 ret.append({
                     **row,
-                    # 'cmd': f'exit {int(randint(1, 100))}',
                     'job_id': str(row['id']),
-                    'job_uid': str(row['id']),
-                    'run_uid': '1',
                     'job_status': row['status'],
-                    'extra_run_id': '1',
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat(),
-                    # 'ttr_msec': int(randint(1, 100))
                 })
             # time.sleep(randint(1, 3))
             for elem in ret:
                 query(
-                    f"UPDATE jobs SET status='propogated' WHERE id={elem['job_uid']} AND status IN ( 'pending','PENDING')")
+                    f"UPDATE jobs SET status='propogated' WHERE id={elem['job_id']} AND status IN ('PENDING')")
 
             # if len(query("SELECT * from jobs WHERE status in ('pending', 'PENDING')")) < 1:
             #     for i in range(0, (len(ret) + 50100)):
             #         query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 5000)},'sleep {randint(1, 5000)/1000}');")
-
-            logger.info(f"New {len(ret)} jobs")
+            if ret:
+                logger.info(f"New {len(ret)} jobs")
             status_code = 200
         except Exception as e:
             ret = {}
@@ -157,16 +152,18 @@ class CancelJob(Resource):
 
         try:
             status_code = 200
-            for row in query(f"SELECT * from jobs WHERE id > 99 AND status in ('running', 'RUNNING') LIMIT {limit}"):
+            for row in query(f"SELECT * from jobs WHERE status in ('cancel')"):
                 ret.append({
                     **row,
+                    'job_id': row['id'],
                     'job_id': row['id'],
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat()
                 })
             # if ret:
-            time.sleep(randint(1, 3))
-            logger.info(f"Cancel {len(ret)} jobs")
+            # time.sleep(randint(1, 3))
+            if ret:
+                logger.info(f"Cancel {len(ret)} jobs")
 
         except Exception as e:
             ret = {}
@@ -185,8 +182,8 @@ class RunJob(Resource):
     """
 
     @jobs_api.doc(params={
-        'job_uid': 'The canonical identifier for the request',
-        'run_uid': 'The canonical Run identifier for the request',
+        'job_id': 'The canonical identifier for the request',
+        'run_id': 'The canonical Run identifier for the request',
         'job_status': 'Job status',
         'previous_job_status': 'Previous Job status',
         'extra_run_id': "The extra identifier for the run"
@@ -199,50 +196,52 @@ class RunJob(Resource):
         logger.info("starting runs")
 
         parser = reqparse.RequestParser()
-        parser.add_argument('job_uid', required=False, type=str, default='',
+        parser.add_argument('job_id', required=True, type=str, default='',
                             help="The canonical identifier for the request")
-        parser.add_argument('extra_run_id', required=False, type=str, default='',
+        parser.add_argument('extra_run_id', required=True, type=str, default='',
                             help="The canonical extra_run_id for the request")
-        parser.add_argument('job_status', required=False, type=str, help="New Job Status")
+        parser.add_argument('job_status', required=True, type=str, help="New Job Status")
         parser.add_argument('previous_job_status', required=False, type=str,
                             default='PENDING',
                             help="Old Job Status")
-        parser.add_argument('run_uid', required=False, type=str, default='',
+        parser.add_argument('run_id', required=False, type=str, default='',
                             help="The Run canonical identifier for the request")
 
         args = parser.parse_args()
-        job_uid = args['job_uid']
+        job_id = args['job_id']
         extra_run_id = args['extra_run_id']
-        run_uid = args['run_uid']
+        run_id = args['run_id']
         job_status = args['job_status']
         previous_job_status = args['previous_job_status']
         status_code = 500
         ret = {
-            "job_id": str(job_uid),
+            "job_id": str(job_id),
             "jobStatus": job_status,
             "extra_run_id": extra_run_id,
             "has_error": False,
             "error_msg": "",
-            "run_uid": run_uid,
+            "run_id": run_id,
             "previous_job_status": f"{previous_job_status}",
             "job_name": "",
             "cmd": "",
             "parameters": []
         }
         try:
+            logger.info(f" job {job_id} with  {job_status}")
+            # flaky()
             status_code = 200
             query(
-                f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_uid']} AND status IN ( '{previous_job_status}','PENDING', 'propogated')")
+                f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_id']} AND status IN ( '{previous_job_status}','PENDING', 'propogated', 'cancel')")
 
-            for row in query(f"SELECT * from jobs WHERE id='{args['job_uid']}'"):
+            for row in query(f"SELECT * from jobs WHERE id='{args['job_id']}'"):
                 _ret = {
                     **ret,
                     **row,
                     'job_id': row['id'],
-                    'jobFlowId': args['jobFlowId'],
+                    # 'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat()
                 }
-            logger.info(f" update job {job_uid} with {_ret}")
+                # logger.info(f" update job {job_id} with {_ret}")
         except Exception as e:
             ret = {}
             error_type = type(e).__name__

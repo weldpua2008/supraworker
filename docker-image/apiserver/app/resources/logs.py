@@ -29,13 +29,13 @@ model_validation_response = log_api.model('ValidationModel', {
 })
 
 
-def _params_to_filename(job_uid, run_uid, extra_run_id):
+def _params_to_filename(job_id, run_id, extra_run_id):
     """
     Prepare file name based on params.
 
     Args:
-        job_uid (str): Job Uid
-        run_uid (str): Job Run Uid
+        job_id (str): Job Uid
+        run_id (str): Job Run Uid
         extra_run_id (str): Extra Job Uid
 
     Returns:
@@ -51,18 +51,18 @@ def _params_to_filename(job_uid, run_uid, extra_run_id):
             logger.info('Directory {} can not be created due {}'.format(
                 _logs_store_dir, error))
 
-        jobs_logs_path = f"{_logs_store_dir}/{job_uid}_{run_uid}_{extra_run_id}.log"
+        jobs_logs_path = f"{_logs_store_dir}/{job_id}_{run_id}_{extra_run_id}.log"
 
         return jobs_logs_path
 
 
-def _params_to_filenames(job_uid, run_uid, extra_run_id):
+def _params_to_filenames(job_id, run_id, extra_run_id):
     """
     Prepare file names based on params.
 
     Args:
-        job_uid (str): Job Uid
-        run_uid (str): Job Run Uid
+        job_id (str): Job Uid
+        run_id (str): Job Run Uid
         extra_run_id (str): Extra Job Uid
 
     Returns:
@@ -71,44 +71,39 @@ def _params_to_filenames(job_uid, run_uid, extra_run_id):
 
     with current_app.app_context():
         _logs_store_dir = current_app.config.get('LOG_STORE_FOLDER', f"/tmp/")
-        ret = []
-        ret.append(f"{_logs_store_dir}/{job_uid}_{run_uid}_{extra_run_id}.log")
-        ret.append(f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{run_uid}_{extra_run_id}.log")
-        ret.append(f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{run_uid}_{urllib.parse.quote(extra_run_id)}.log")
-
-        ret.append(f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{urllib.parse.quote(run_uid)}_{extra_run_id}.log")
-        ret.append(
-            f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{urllib.parse.quote(run_uid)}_{urllib.parse.quote(extra_run_id)}.log")
-
-        ret.append(f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{urllib.parse.quote(run_uid)}_{extra_run_id}.log")
-        ret.append(
-            f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{urllib.parse.quote(run_uid)}_{urllib.parse.quote(extra_run_id)}.log")
-        ret.append(f"{_logs_store_dir}/{urllib.parse.quote(job_uid)}_{run_uid}_{urllib.parse.quote(extra_run_id)}.log")
-        ret.append(f"{_logs_store_dir}/{job_uid}_{run_uid}_{urllib.parse.quote(extra_run_id)}.log")
-        ret.append(f"{_logs_store_dir}/{job_uid}_{run_uid}_{urllib.parse.unquote(extra_run_id)}.log")
+        ret = [f"{_logs_store_dir}/{job_id}_{run_id}_{extra_run_id}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{run_id}_{extra_run_id}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{run_id}_{urllib.parse.quote(extra_run_id)}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{urllib.parse.quote(run_id)}_{extra_run_id}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{urllib.parse.quote(run_id)}_{urllib.parse.quote(extra_run_id)}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{urllib.parse.quote(run_id)}_{extra_run_id}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{urllib.parse.quote(run_id)}_{urllib.parse.quote(extra_run_id)}.log",
+               f"{_logs_store_dir}/{urllib.parse.quote(job_id)}_{run_id}_{urllib.parse.quote(extra_run_id)}.log",
+               f"{_logs_store_dir}/{job_id}_{run_id}_{urllib.parse.quote(extra_run_id)}.log",
+               f"{_logs_store_dir}/{job_id}_{run_id}_{urllib.parse.unquote(extra_run_id)}.log"]
 
         return ret
 
 
 @log_api.route('/log/stream', endpoint='run_stream_log')
 class LogStreams(Resource):
-    '''Job Run Logs'''
+    """Job Run Logs"""
 
     @log_api.produces('text/plain')
     @log_api.doc(params={
-        'job_uid': 'The canonical Job identifier for the request',
-        'run_uid': 'The canonical Run identifier for the request',
+        'job_id': 'The canonical Job identifier for the request',
+        'run_id': 'The canonical Run identifier for the request',
         'extra_run_id': 'The canonical Extra Run identifier for the request',
         'offset': 'num lines already received from the API',
         'limit': 'Maximum lines per response'
     })
     @log_api.response(400, 'Post data Validation Error', model_validation_response)
     def get(self):
-        '''Get Job Run Logs'''
+        """Get Job Run Logs"""
         parser = reqparse.RequestParser()
-        parser.add_argument('job_uid', required=True, type=str, default='',
+        parser.add_argument('job_id', required=True, type=str, default='',
                             help="The Job canonical identifier for the request")
-        parser.add_argument('run_uid', required=True, type=str, default='',
+        parser.add_argument('run_id', required=True, type=str, default='',
                             help="The Run canonical identifier for the request")
         parser.add_argument('extra_run_id', required=True, type=str, default='',
                             help="The extra identifier for the run")
@@ -117,15 +112,15 @@ class LogStreams(Resource):
         parser.add_argument('limit', required=False, type=int, default=100, help="Maximum lines per response")
         args = parser.parse_args()
         fn = _params_to_filename(
-            job_uid=args.job_uid,
-            run_uid=args.run_uid,
+            job_id=args.job_id,
+            run_id=args.run_id,
             extra_run_id=args.extra_run_id
         )
         ret = []
         status_code = 200
         try:
-            for fn in _params_to_filenames(job_uid=args.job_uid,
-                                           run_uid=args.run_uid,
+            for fn in _params_to_filenames(job_id=args.job_id,
+                                           run_id=args.run_id,
                                            extra_run_id=args.extra_run_id
                                            ):
 
@@ -142,8 +137,8 @@ class LogStreams(Resource):
                                 break
 
                     return jsonify(ret)
-            _files = _params_to_filenames(job_uid=args.job_uid,
-                                          run_uid=args.run_uid,
+            _files = _params_to_filenames(job_id=args.job_id,
+                                          run_id=args.run_id,
                                           extra_run_id=args.extra_run_id
                                           )
             logger.info(f"Can't find the following files {_files}\n")
@@ -160,28 +155,28 @@ class LogStreams(Resource):
 
 @log_api.route('/run', endpoint='run_log')
 class LogUploader(Resource):
-    '''Job Run Logs'''
+    """Job Run Logs"""
 
     @log_api.produces('text/plain')
     @log_api.doc(params={
-        'job_uid': 'The canonical Job identifier for the request',
-        'run_uid': 'The canonical Run identifier for the request',
+        'job_id': 'The canonical Job identifier for the request',
+        'run_id': 'The canonical Run identifier for the request',
         'extra_run_id': 'The canonical Extra Run identifier for the request'
     })
     @log_api.response(400, 'Post data Validation Error', model_validation_response)
     def get(self):
-        '''Get Job Run Logs'''
+        """Get Job Run Logs"""
         parser = reqparse.RequestParser()
-        parser.add_argument('job_uid', required=True, type=str, default='',
+        parser.add_argument('job_id', required=True, type=str, default='',
                             help="The Job canonical identifier for the request")
-        parser.add_argument('run_uid', required=True, type=str, default='',
+        parser.add_argument('run_id', required=True, type=str, default='',
                             help="The Run canonical identifier for the request")
         parser.add_argument('extra_run_id', required=True, type=str, default='',
                             help="The extra identifier for the run")
         args = parser.parse_args()
         fn = _params_to_filename(
-            job_uid=args.job_uid,
-            run_uid=args.run_uid,
+            job_id=args.job_id,
+            run_id=args.run_id,
             extra_run_id=args.extra_run_id
         )
         ret = {
@@ -205,8 +200,8 @@ class LogUploader(Resource):
         return ret, status_code
 
     @log_api.doc(params={
-        'job_uid': 'The canonical Job identifier for the request',
-        'run_uid': 'The canonical Run identifier for the request',
+        'job_id': 'The canonical Job identifier for the request',
+        'run_id': 'The canonical Run identifier for the request',
         'extra_run_id': 'The canonical Extra Run identifier for the request',
         'msg': 'Log message'
     })
@@ -214,17 +209,17 @@ class LogUploader(Resource):
     def post(self):
         '''Upload Job Run Logs'''
         parser = reqparse.RequestParser()
-        parser.add_argument('job_uid', required=True, type=str, default='',
+        parser.add_argument('job_id', required=True, type=str, default='',
                             help="The Job canonical identifier for the request")
-        parser.add_argument('run_uid', required=True, type=str, default='',
+        parser.add_argument('run_id', required=True, type=str, default='',
                             help="The Run canonical identifier for the request")
         parser.add_argument('extra_run_id', required=True, type=str, default='',
                             help="The extra identifier for the run")
         parser.add_argument('msg', required=True, type=str, default='', help="The log msg ")
         args = parser.parse_args()
         fn = _params_to_filename(
-            job_uid=args.job_uid,
-            run_uid=args.run_uid,
+            job_id=args.job_id,
+            run_id=args.run_id,
             extra_run_id=args.extra_run_id
         )
         ret = {
@@ -246,24 +241,24 @@ class LogUploader(Resource):
         return ret, status_code
 
     @log_api.doc(params={
-        'job_uid': 'The canonical Job identifier for the request',
-        'run_uid': 'The canonical Run identifier for the request',
+        'job_id': 'The canonical Job identifier for the request',
+        'run_id': 'The canonical Run identifier for the request',
         'extra_run_id': 'The canonical Extra Run identifier for the request'
     })
     @log_api.response(400, 'Post data Validation Error', model_validation_response)
     def delete(self):
         '''Delete Job Run Logs'''
         parser = reqparse.RequestParser()
-        parser.add_argument('job_uid', required=True, type=str, default='',
+        parser.add_argument('job_id', required=True, type=str, default='',
                             help="The Job canonical identifier for the request")
-        parser.add_argument('run_uid', required=True, type=str, default='',
+        parser.add_argument('run_id', required=True, type=str, default='',
                             help="The Run canonical identifier for the request")
         parser.add_argument('extra_run_id', required=True, type=str, default='',
                             help="The extra identifier for the run")
         args = parser.parse_args()
         fn = _params_to_filename(
-            job_uid=args.job_uid,
-            run_uid=args.run_uid,
+            job_id=args.job_id,
+            run_id=args.run_id,
             extra_run_id=args.extra_run_id
         )
         ret = {

@@ -48,7 +48,7 @@ func StartHeartBeat(ctx context.Context, section string, interval time.Duration)
 			case <-tickerHeartBeats.C:
 
 				func() {
-					heartbeatCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+					heartbeatCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 					// TODO: wrap it in a function –either an anonymous or a named function
 					defer cancel() // cancel when we are getting the kill signal or exit
 					config.C.NumActiveJobs = worker.NumActiveJobs

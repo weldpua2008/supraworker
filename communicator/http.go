@@ -152,7 +152,13 @@ func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interfac
 		config.CFG_PREFIX_BACKOFF_MAXELAPSEDTIME, time.Second); val.Milliseconds() > 0 {
 		expBackoff.MaxElapsedTime = val
 	}
+
+	//var notifyFunc backoff.Notify = func(e error, duration time.Duration) {
+	//	log.Tracef("Retry on... %s", e)
+	//}
+	//errRetry := backoff.RetryNotify(operation, expBackoff, notifyFunc)
 	errRetry := backoff.Retry(operation, expBackoff)
+
 	return result, errRetry
 
 }

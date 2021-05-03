@@ -12,4 +12,6 @@ echoinfo() { if [[ ${QUIET:-0} -ne 1 ]]; then echo -e "${Info} $@" 1>&2; fi }
 [[ -e /etc/docker_build_date ]] && echoinfo "Docker image build date: $(cat /etc/docker_build_date), run as: ${USER}"
 #[[ -e ${prometheus_multiproc_dir} ]] && rm -rf ${prometheus_multiproc_dir}
 mkdir -p "${prometheus_multiproc_dir}"
-gunicorn --access-logfile - --error-logfile - --log-level debug  --config python:app.gunicorn_config app.app:app
+#gunicorn --access-logfile - --error-logfile - --log-level debug  --config python:app.gunicorn_config app.app:app
+
+gunicorn --config python:app.gunicorn_config app.app:app

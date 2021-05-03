@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/weldpua2008/supraworker/communicator"
+
 	// "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"html/template"
@@ -76,6 +78,41 @@ func GetSliceParamsFromSection(stage string, param string) []string {
 		c = append(c, tplBytes.String())
 	}
 	return c
+}
+
+// DoApi REST calls via communicators
+func DoApi(ctx context.Context, params map[string]interface{}, stage string) error {
+	//log.Tracef("[DoApi] ctx %v params %v stage %v", ctx, params, stage)
+	section := fmt.Sprintf("%v.%v",
+		config.CFG_PREFIX_JOBS, stage)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	defaultRequestTimeout := time.Duration(60) * time.Second
+	if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
+			defaultRequestTimeout = duration
+		} else {
+			log.Tracef("[DoApi] Cannot parse duration %v stage %v", errParseDuration, stage)
+		}
+	}
+	allCommunicators, errGetCommunicators := communicator.GetCommunicatorsFromSection(section)
+	if errGetCommunicators != nil {
+		if comm, errGetCommunicators := communicator.GetSectionCommunicator(section); errGetCommunicators == nil {
+			allCommunicators = []communicator.Communicator{comm}
+		} else {
+			log.Warnf("[DoApi] Cannot use communicators from %s got %s", section, errGetCommunicators)
+		}
+	}
+	fetchCtx, cancel := context.WithTimeout(ctx, defaultRequestTimeout)
+	defer cancel() // cancel when we are getting the kill signal or exit
+	for _, comm := range allCommunicators {
+		res, err := comm.Fetch(fetchCtx, params)
+		if err != nil {
+			return fmt.Errorf("%w got %v error %v sent %v", ErrFailedSendRequest, res, err, params)
+		}
+	}
+	return nil
 }
 
 // DoApiCall for the jobs stages

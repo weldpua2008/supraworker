@@ -169,14 +169,14 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						job.RunUID = RunUID
 						job.ExtraRunUID = ExtraRunUID
 						job.RawParams = append(job.RawParams, jobResponse)
-						job.SetContext(ctx)
+
 						if TTR < 1 {
 							TTR = uint64((time.Duration(8*3600) * time.Second).Milliseconds())
 						}
 						job.TTR = TTR
 						job.CmdENV = EnvVar
 						metrics.FetchNewJobLatency.WithLabelValues("new_job_created").Observe(float64(time.Since(start).Nanoseconds()))
-
+						job.StartAt = time.Now()
 						if JobsRegistry.Add(job) {
 							metrics.FetchNewJobLatency.WithLabelValues("new_job_appended_to_registry").Observe(float64(time.Since(start).Nanoseconds()))
 							metrics.JobsProcessed.Inc()
@@ -201,7 +201,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 	// We are getting such jobs from API
 	// exists on kill
 
-	log.Infof("Starting canceling jobs with delay %v", interval)
+	log.Infof("Fetching jobs for cancellation with delay %v", interval)
 
 	go func() {
 		j := 0
@@ -210,7 +210,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 
 			case <-ctx.Done():
 				doneNumCancelJobs <- j
-				log.Debug("Jobs cancellation finished [ SUCCESSFULLY ]")
+				log.Debug("Jobs cancellation loop finished [ SUCCESSFULLY ]")
 
 				return
 			case <-tickerCancelJobs.C:
@@ -251,21 +251,18 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 							continue
 						}
 						jobCancellationId := model.StoreKey(JobId, RunUID, ExtraRunUID)
-						if jobCancelation, ok := JobsRegistry.Record(jobCancellationId); ok {
+						if jobForCancellation, ok := JobsRegistry.Record(jobCancellationId); ok {
 							metrics.JobsCancelled.Inc()
-							if err := jobCancelation.Cancel(); err != nil {
+							if err := jobForCancellation.Cancel(); err != nil {
 								log.Tracef("Can't cancel '%s' got %s ", jobCancellationId, err)
 							}
 						} /* else {
 							log.Tracef("Can't find job key '%s' for cancelation: %s extra %s runid %s", jobCancellationId, JobId, ExtraRunUID, RunUID)
-							for _, rJob:= range JobsRegistry.All(){
-								if len(rJob.Id) < 2 {
-									continue
-								}
-								log.Tracef("  => id: %s extra: %s runuid: %s", rJob.Id, rJob.ExtraRunUID, rJob.RunUID)
-							}
-						}
-						*/
+							JobsRegistry.Map(func(key string, job *model.Job) {
+								log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
+							})
+						} */
+
 					}
 				}
 				metrics.FetchCancelLatency.WithLabelValues("total").Observe(float64(time.Since(start).Nanoseconds()))

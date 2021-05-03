@@ -17,7 +17,7 @@ def query(sql, params=()):
     cursor = cnx.cursor()
     try:
         cursor.execute(sql, params)
-        if 'UPDATE' in sql or 'INSERT' in sql or 'DELETE' in sql or 'ALTER' in sql:
+        if 'UPDATE' in sql or 'INSERT' in sql or 'DELETE' in sql or 'ALTER' in sql or 'TRUNCATE' in sql:
             cnx.commit()
         result = []
         columns = cursor.description
