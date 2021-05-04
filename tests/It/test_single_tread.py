@@ -62,7 +62,8 @@ class TestSum(unittest.TestCase):
         for i in range(num):
             if self.is_processed():
                 break
-            time.sleep(i)
+            time.sleep(i*2)
+        time.sleep(2)
 
     @num_jobs(5)
     def test_success_jobs(self, num):

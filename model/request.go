@@ -108,6 +108,7 @@ func DoApi(ctx context.Context, params map[string]interface{}, stage string) err
 	defer cancel() // cancel when we are getting the kill signal or exit
 	for _, comm := range allCommunicators {
 		res, err := comm.Fetch(fetchCtx, params)
+		//log.Infof("[comm.Fetch] params %v => %v", params, res)
 		if err != nil {
 			return fmt.Errorf("%w got %v error %v sent %v", ErrFailedSendRequest, res, err, params)
 		}

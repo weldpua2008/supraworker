@@ -213,7 +213,7 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 	} else {
 		req, err = http.NewRequest(s.method, s.url, nil)
 	}
-	// log.Warningf("s.method %v, s.url %v ", s.method, s.url)
+	//log.Warningf("s.method %v, s.url %v  allParams %v", s.method, s.url, allParams)
 	if err != nil {
 		return result, fmt.Errorf("%w due %s", ErrFailedSendRequest, err)
 	}
