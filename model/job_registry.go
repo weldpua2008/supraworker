@@ -82,7 +82,7 @@ func (r *Registry) Cleanup() (num int) {
 	defer r.mu.Unlock()
 	for k, v := range r.all {
 		end := v.StartAt.Add(time.Duration(v.TTR) * time.Millisecond)
-		if (v.TTR > 0) && (now.After(end)) && (!IsTerminalStatus(v.GetStatus())) {
+		if (v.TTR > 0) && (now.After(end)) {
 			if err := v.Timeout(); err != nil {
 				log.Debugf("[TIMEOUT] failed cancel job %s %v StartAt %v, %v", v.Id, err, v.StartAt, err)
 			} else {

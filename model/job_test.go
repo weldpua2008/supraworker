@@ -85,8 +85,8 @@ func TestStreamApi(t *testing.T) {
 		t.Errorf("timed out")
 	}
 
-	if job.GetStatus() != JOB_STATUS_SUCCESS {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_SUCCESS, job.Status)
+	if job.GetStatus() != JOB_STATUS_RUN_OK {
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.Status)
 	}
 
 	if got != want {
@@ -149,8 +149,8 @@ func TestLongLineStreamApi(t *testing.T) {
 		t.Errorf("timed out")
 	}
 
-	if job.GetStatus() != JOB_STATUS_SUCCESS {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_SUCCESS, job.Status)
+	if job.GetStatus() != JOB_STATUS_RUN_OK {
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.Status)
 	}
 
 	if got != want {
@@ -165,8 +165,8 @@ func TestExecuteJobSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error in %s, got %v\n", cmdtest.GetFunctionName(t.Name), err)
 	}
-	if job.GetStatus() != JOB_STATUS_SUCCESS {
-		t.Errorf("Expected %s, got %s", JOB_STATUS_SUCCESS, job.Status)
+	if job.GetStatus() != JOB_STATUS_RUN_OK {
+		t.Errorf("Expected %s, got %s", JOB_STATUS_RUN_OK, job.Status)
 	}
 }
 
@@ -177,8 +177,8 @@ func TestExecuteJobError(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected  error, got %v\n", err)
 	}
-	if job.GetStatus() != JOB_STATUS_ERROR {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_ERROR, job.Status)
+	if job.GetStatus() != JOB_STATUS_RUN_FAILED {
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_FAILED, job.Status)
 	}
 
 }

@@ -96,7 +96,7 @@ func TestExecuteJobTTRCanceled(t *testing.T) {
 	close(jobs)
 	wg.Wait()
 	// time.Sleep(10 * time.Millisecond)
-	if jobOne.Status != model.JOB_STATUS_ERROR {
-		t.Errorf("Expected %s, got %s\n", model.JOB_STATUS_ERROR, jobOne.Status)
+	if jobOne.Status != model.JOB_STATUS_TIMEOUT {
+		t.Errorf("Expected %s, got %s\n", model.JOB_STATUS_TIMEOUT, jobOne.Status)
 	}
 }

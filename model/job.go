@@ -570,36 +570,40 @@ func (j *Job) runcmd() error {
 	status := j.cmd.ProcessState.Sys()
 	ws, ok := status.(syscall.WaitStatus)
 	if !ok {
-		err = fmt.Errorf("process state Sys() was a %T; want a syscall.WaitStatus", status)
+		err = fmt.Errorf("%w got %T", ErrorJobNotInWaitStatus, status)
 		j.exitError = err
 	}
 	exitCode := ws.ExitStatus()
 	j.ExitCode = exitCode
-	if exitCode < 0 {
-		err = fmt.Errorf("invalid negative exit status %d", exitCode)
-		j.exitError = err
-	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
 
-	if exitCode != 0 {
+	switch {
+	case j.Status == JOB_STATUS_CANCELED:
+		err = ErrJobCancelled
+	case ctx != nil && ctx.Err() == context.DeadlineExceeded:
+		err = ErrJobTimeout
+	case exitCode < 0:
+		err = fmt.Errorf("%w %d", ErrInvalidNegativeExitCode, exitCode)
+		_ = j.AppendLogStream([]string{fmt.Sprintf("%s\n", err)})
+	case exitCode != 0:
 		err = fmt.Errorf("exit code '%d'", exitCode)
 		_ = j.AppendLogStream([]string{fmt.Sprintf("%s\n", err)})
-		j.exitError = err
-	}
-	if err == nil {
+	case err == nil:
 		signaled := ws.Signaled()
 		signal := ws.Signal()
 		if signaled {
-			err = fmt.Errorf("Signal: %v", signal)
-			j.exitError = err
-		} else if j.Status == JOB_STATUS_CANCELED {
-			err = fmt.Errorf("return error for Canceled Job")
+			err = fmt.Errorf("%w %v", ErrJobGotSignal, signal)
 		}
 	}
-	if ctx != nil && ctx.Err() == context.DeadlineExceeded {
-		err = ctx.Err()
+	if !IsTerminalStatus(j.Status) {
+		j.Status = JOB_STATUS_RUN_OK
+		if err != nil {
+			j.Status = JOB_STATUS_RUN_FAILED
+		}
 	}
+	j.exitError = err
 
-	// log.Tracef("The number of goroutines that currently exist.: %v", runtime.NumGoroutine())
 	return err
 }
 
@@ -619,21 +623,21 @@ func (j *Job) Run() error {
 		j.exitError = err
 	}
 	j.updatelastActivity()
-	msg := fmt.Sprintf("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
-	if !IsTerminalStatus(j.Status) {
-		finalStatus := JOB_STATUS_ERROR
-		if err == nil {
-			finalStatus = JOB_STATUS_SUCCESS
-		}
-
-		if errUpdate := j.updateStatus(finalStatus); errUpdate != nil {
-			j.GetLogger().Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, finalStatus)
-		}
-		msg = fmt.Sprintf("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
-	} else {
-		msg = fmt.Sprintf("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
-	}
-	j.GetLogger().Info(msg)
+	//msg := fmt.Sprintf("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
+	//if !IsTerminalStatus(j.Status) {
+	//	finalStatus := JOB_STATUS_ERROR
+	//	if err == nil {
+	//		finalStatus = JOB_STATUS_SUCCESS
+	//	}
+	//
+	//	if errUpdate := j.updateStatus(finalStatus); errUpdate != nil {
+	//		j.GetLogger().Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, finalStatus)
+	//	}
+	//	msg = fmt.Sprintf("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
+	//} else {
+	//	msg = fmt.Sprintf("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
+	//}
+	//j.GetLogger().Info(msg)
 	return err
 }
 

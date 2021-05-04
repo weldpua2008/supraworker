@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/weldpua2008/supraworker/job"
 	"github.com/weldpua2008/supraworker/metrics"
@@ -55,50 +56,33 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 		if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
 			logJob.Tracef("failed to flush logstream buffer due %v", errFlushBuf)
 		}
-		if errJobRun != nil {
-			if j.Status != model.JOB_STATUS_CANCELED {
-				if errJobRun == context.DeadlineExceeded {
-					if errTimeout := j.Timeout(); errTimeout != nil {
-						logJob.Tracef("[Timeout()] got: %v ", errTimeout)
-					}
-				}
-				if errFail := j.Failed(); errFail != nil {
-					logJob.Tracef("[Failed()] got: %v ", errFail)
-				}
-				jobsFailed.Inc()
-				logJob.Infof("Failed with %s", errJobRun)
-			} else {
-				logJob.Infof("failed with %s and state %s", errJobRun, j.Status)
+
+		dur := time.Since(j.StartAt)
+		switch {
+		// Execution stopped by TTR
+		case errors.Is(errJobRun, model.ErrJobTimeout):
+			if errTimeout := j.Timeout(); errTimeout != nil {
+				logJob.Tracef("[Timeout()] got: %v ", errTimeout)
 			}
-		} else {
-			dur := time.Since(j.StartAt)
+		case errors.Is(errJobRun, model.ErrJobCancelled):
+			if errTimeout := j.Cancel(); errTimeout != nil {
+				logJob.Tracef("[Cancel()] got: %v ", errTimeout)
+			}
+		case errJobRun == nil:
 			if err := j.Finish(); err != nil {
 				logJob.Debugf("finished in %v got %v", dur, err)
 			} else {
 				logJob.Debugf("finished in %v", dur)
 			}
-
 			jobsSucceeded.Inc()
 			jobsDuration.Observe(dur.Seconds())
+		default:
+			if errFail := j.Failed(); errFail != nil {
+				logJob.Tracef("[Failed()] got: %v ", errFail)
+			}
+			jobsFailed.Inc()
+			logJob.Infof("Failed with %s", errJobRun)
 		}
-
-		//if err := j.Run(); err != nil {
-		//	log.Infof("Job %v failed with %s", j.Id, err)
-		//	if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
-		//		log.Tracef("Job %v failed to flush buffer due %v", j.Id, errFlushBuf)
-		//	}
-		//	_ = j.Failed()
-		//	jobsFailed.Inc()
-		//} else {
-		//	dur := time.Since(j.StartAt)
-		//	log.Debugf("Job %v finished in %v", j.Id, dur)
-		//	if errFlushBuf := j.FlushSteamsBuffer(); errFlushBuf != nil {
-		//		log.Tracef("Job %v failed to flush buffer due %v", j.Id, errFlushBuf)
-		//	}
-		//	_ = j.Finish()
-		//	jobsSucceeded.Inc()
-		//	jobsDuration.Observe(dur.Seconds())
-		//}
 		mu.Lock()
 		NumActiveJobs -= 1
 		mu.Unlock()

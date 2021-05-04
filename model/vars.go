@@ -11,7 +11,12 @@ const (
 )
 
 var (
-	ErrFailedSendRequest = errors.New("Failed to send request")
+	ErrFailedSendRequest       = errors.New("Failed to send request")
+	ErrInvalidNegativeExitCode = errors.New("Invalid negative exit code")
+	ErrJobCancelled            = errors.New("Job cancelled")
+	ErrJobTimeout              = errors.New("Job timeout")
+	ErrJobGotSignal            = errors.New("Job got sgnal")
+	ErrorJobNotInWaitStatus    = errors.New("Process state is not in WaitStatus")
 
 	execCommandContext = exec.CommandContext
 	// FetchNewJobAPIURL is URL for pulling new jobs
@@ -41,6 +46,8 @@ const (
 	JOB_STATUS_PENDING     = "PENDING"
 	JOB_STATUS_IN_PROGRESS = "RUNNING"
 	JOB_STATUS_SUCCESS     = "SUCCESS"
+	JOB_STATUS_RUN_OK      = "RUN_OK"
+	JOB_STATUS_RUN_FAILED  = "RUN_FAILED"
 	JOB_STATUS_ERROR       = "ERROR"
 	JOB_STATUS_CANCELED    = "CANCELED"
 	JOB_STATUS_TIMEOUT     = "TIMEOUT"
