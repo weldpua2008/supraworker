@@ -228,7 +228,7 @@ class RunJob(Resource):
         }
         try:
             logger.info(f" job {job_id} with  {job_status}")
-            # flaky()
+            flaky()
             status_code = 200
             query(
                 f"UPDATE jobs SET status='{job_status}' WHERE id={args['job_id']} AND status IN ( '{previous_job_status}','PENDING', 'propogated', 'cancel')")

@@ -38,9 +38,9 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 30s
-        maxinterval: 20s
-        initialinterval: 10s
+        maxelapsedtime: 300s
+        maxinterval: 200s
+        initialinterval: 1s
 
   finish: &finish
     communicator:
@@ -50,9 +50,9 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 30s
-        maxinterval: 20s
-        initialinterval: 10s
+        maxelapsedtime: 300s
+        maxinterval: 200s
+        initialinterval: 1s
       params:
         job_status: "SUCCESS"
         job_id: "{{ .JobId }}"
@@ -67,9 +67,9 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 30s
-        maxinterval: 20s
-        initialinterval: 10s
+        maxelapsedtime: 300s
+        maxinterval: 200s
+        initialinterval: 1s
       params:
         job_status: "FAILED"
         job_id: "{{ .JobId }}"
@@ -84,9 +84,9 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 30s
-        maxinterval: 20s
-        initialinterval: 10s
+        maxelapsedtime: 300s
+        maxinterval: 200s
+        initialinterval: 1s
       params:
         job_status: "TIMEOUT"
         job_id: "{{ .JobId }}"
@@ -101,9 +101,9 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 30s
-        maxinterval: 20s
-        initialinterval: 10s
+        maxelapsedtime: 300s
+        maxinterval: 200s
+        initialinterval: 1s
       params:
         job_status: "CANCELLED"
         job_id: "{{ .JobId }}"

@@ -59,6 +59,7 @@ type Job struct {
 	ExitCode               int // Exit code
 	cmd                    *exec.Cmd
 	ctx                    context.Context
+	alreadyStopped         bool
 
 	// params got from your API
 	RawParams []map[string]interface{}
@@ -94,7 +95,7 @@ func (j *Job) updatelastActivity() {
 
 // updateStatus job status
 func (j *Job) updateStatus(status string) error {
-	j.GetLogger().Tracef("[STATUS] moved '%s' -> '%s'", j.Status, status)
+	j.GetLogger().Tracef("'%s' -> '%s'", j.Status, status)
 	j.PreviousStatus = j.Status
 	j.Status = status
 	return nil
@@ -188,7 +189,8 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 // Stops the job process and kills all children processes.
 func (j *Job) stopProcess() (cancelError error) {
 	var processChildren []int
-	if j.cmd != nil && j.cmd.Process != nil {
+	if j.cmd != nil && j.cmd.Process != nil && !j.alreadyStopped {
+		j.alreadyStopped = true
 		j.GetLogger().Tracef("Killing main process %v", j.cmd.Process.Pid)
 		processTree, errTree := NewProcessTree()
 		if errTree == nil {
@@ -456,17 +458,12 @@ func (j *Job) runcmd() error {
 	}
 	j.mu.Unlock()
 	if err != nil && j.cmd.Process != nil {
-		j.GetLogger().Tracef("Run cmd: %v [%v]\n", j.cmd, j.cmd.Process.Pid)
+		j.GetLogger().Tracef("CMD: %s [%d]\n", j.cmd, j.cmd.Process.Pid)
 	} else {
-		j.GetLogger().Tracef("Run cmd: %v\n", j.cmd)
+		j.GetLogger().Tracef("CMD: %s\n", j.cmd)
 	}
 	// update API
-	//stage := "jobs.run"
-	//if errApi, result := DoApiCall(j.ctx, j.GetAPIParams(stage), stage); errApi != nil {
-	//	log.Tracef("failed to update api, got: %s and %s\n", result, errApi)
-	//}
 	stage := "run"
-	//params := j.GetParams()
 	params := j.GetParamsWithResend(stage)
 	if err := DoApi(context.Background(), params, stage); err != nil {
 		j.GetLogger().Warnf("[%s] %s", j.Id, err)
