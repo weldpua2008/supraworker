@@ -297,9 +297,10 @@ func TestJobUpdateStatus(t *testing.T) {
 
 // Test Job status updates via HTTP Communicator
 func TestJobStatusCommunicators(t *testing.T) {
+	isFlakyNow := make(chan bool, 1)
 	out := make(chan string, 1)
 	cmdtest.StartTrace()
-	srv := config.NewFlakyTestServer(t, out, 15*time.Second)
+	srv := config.NewFlakyTestServer(t, out, isFlakyNow, 15*time.Second)
 	defer func() {
 		srv.Close()
 		close(out)
@@ -375,7 +376,7 @@ func TestJobStatusCommunicators(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-
+		isFlakyNow <- true
 		job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo S&&exit 0"))
 		job.StreamInterval = 1 * time.Millisecond
 		job.ExtraRunUID = "1"
@@ -385,6 +386,8 @@ func TestJobStatusCommunicators(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected no error in %s, got '%v'\n", cmdtest.GetFunctionName(t.Name), err)
 		}
+		isFlakyNow <- true
+
 		out <- tc.out
 		switch tc.section {
 		case JOB_STATUS_ERROR:

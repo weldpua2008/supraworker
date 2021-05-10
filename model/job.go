@@ -60,6 +60,7 @@ type Job struct {
 	cmd                    *exec.Cmd
 	ctx                    context.Context
 	alreadyStopped         bool
+	killOnce               sync.Once
 
 	// params got from your API
 	RawParams []map[string]interface{}
@@ -190,34 +191,36 @@ func (j *Job) GetAPIParams(stage string) map[string]string {
 func (j *Job) stopProcess() (cancelError error) {
 	var processChildren []int
 	if j.cmd != nil && j.cmd.Process != nil && !j.alreadyStopped {
-		j.alreadyStopped = true
-		j.GetLogger().Tracef("Killing main process %v", j.cmd.Process.Pid)
-		processTree, errTree := NewProcessTree()
-		if errTree == nil {
-			processChildren = processTree.Get(j.cmd.Process.Pid)
-		} else {
-			j.GetLogger().Warnf("Can't fetch process tree, got %v", errTree)
-		}
-		if err := j.cmd.Process.Kill(); err != nil {
-			status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
-			exitStatus := status.ExitStatus()
-			signaled := status.Signaled()
-			signal := status.Signal()
-			//cancelError = fmt.Errorf("failed to kill process: %s", err)
-			if !signaled && exitStatus == 0 {
-				cancelError = fmt.Errorf("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
+		j.killOnce.Do(func() {
+			j.alreadyStopped = true
+			j.GetLogger().Tracef("Killing main process %v", j.cmd.Process.Pid)
+			processTree, errTree := NewProcessTree()
+			if errTree == nil {
+				processChildren = processTree.Get(j.cmd.Process.Pid)
+			} else {
+				j.GetLogger().Warnf("Can't fetch process tree, got %v", errTree)
 			}
-		}
-		if processList, err := ps.Processes(); err == nil {
-			for aux := range processList {
-				process := processList[aux]
-				if ContainsIntInIntSlice(processChildren, process.Pid()) {
-					errKill := syscall.Kill(process.Pid(), syscall.SIGTERM)
-					j.GetLogger().Tracef("Killing PID: %d --> Name: %s --> ParentPID: %d [%v]", process.Pid(), process.Executable(), process.PPid(), errKill)
-
+			if err := j.cmd.Process.Kill(); err != nil {
+				status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
+				exitStatus := status.ExitStatus()
+				signaled := status.Signaled()
+				signal := status.Signal()
+				//cancelError = fmt.Errorf("failed to kill process: %s", err)
+				if !signaled && exitStatus == 0 {
+					cancelError = fmt.Errorf("unexpected: err %v, exitStatus was %v + signal %s, while running: %s", err, exitStatus, signal, j.CMD)
 				}
 			}
-		}
+			if processList, err := ps.Processes(); err == nil {
+				for aux := range processList {
+					process := processList[aux]
+					if ContainsIntInIntSlice(processChildren, process.Pid()) {
+						errKill := syscall.Kill(process.Pid(), syscall.SIGTERM)
+						j.GetLogger().Tracef("Killing PID: %d --> Name: %s --> ParentPID: %d [%v]", process.Pid(), process.Executable(), process.PPid(), errKill)
+
+					}
+				}
+			}
+		})
 	}
 	return cancelError
 }

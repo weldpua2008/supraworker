@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/goleak"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -86,16 +85,23 @@ func NewTestServer(t *testing.T, in func() interface{}, out func(string)) *httpt
 	return srv
 }
 
-func NewFlakyTestServer(t *testing.T, out <-chan string, maxTimeout time.Duration) *httptest.Server {
-	s1 := rand.NewSource(time.Now().UnixNano())
-	r1 := rand.New(s1)
+func NewFlakyTestServer(t *testing.T, out <-chan string, isFlakyNow <-chan bool, maxTimeout time.Duration) *httptest.Server {
+	//s1 := rand.NewSource(time.Now().UnixNano())
+	//r1 := rand.New(s1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		if r1.Intn(2) != 0 {
-			t.Log("Flaky response")
+		select {
+		case <-isFlakyNow:
 			http.Error(w, "Flaky response ", http.StatusInternalServerError)
 			return
+		default:
 		}
+
+		//if r1.Intn(2) != 0 {
+		//	t.Log("Flaky response")
+		//	http.Error(w, "Flaky response ", http.StatusInternalServerError)
+		//	return
+		//}
 
 		var response []byte
 		var gotBody map[string]interface{}
