@@ -525,11 +525,6 @@ func (j *Job) runcmd() error {
 	// no problems copying stdin, stdout, and stderr,
 	// and exits with a zero exit status.
 	err = j.cmd.Wait()
-	//if ctx != nil {
-	//	log.Tracef("[%s] Wait got %s ctx.Err %v", j.Id, err, ctx.Err())
-	//} else {
-	//	log.Tracef("[%s] Wait got %s j.ctx: %v", j.Id, err, ctx)
-	//}
 	if err != nil {
 		status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
 		signaled := status.Signaled()
@@ -541,7 +536,7 @@ func (j *Job) runcmd() error {
 		}
 		*/
 	}
-
+	j.alreadyStopped = true
 	// signal that we've read all logs
 	j.notifyStopStreams <- struct{}{}
 	status := j.cmd.ProcessState.Sys()

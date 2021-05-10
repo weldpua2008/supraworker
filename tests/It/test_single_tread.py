@@ -15,7 +15,7 @@ def num_jobs(number):
     return actual_decorator
 
 
-NUM_JOBS = 5
+NUM_WORKERS = 50
 
 
 class TestSum(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestSum(unittest.TestCase):
     def tearDown(self) -> None:
         utils.query(
             f"UPDATE jobs SET status='{self.cancelled_state}' WHERE status not IN ('{self.cancelled_state}') ")
-        time.sleep(3)
+        time.sleep(5)
 
     def add_x_jobs(self, num: int = 10, cmd: str = 'exit 0', ttr: str = '10000') -> list:
         for i in range(num):
@@ -68,25 +68,30 @@ class TestSum(unittest.TestCase):
             num = n[0]['n']
         return num
 
-    def wait_processed(self, num):
-        for i in range(0, num):
-            if self.is_processed():
-                break
-            time.sleep(i)
-        for i in range(0, num):
-            if self.num_processed() > num:
-                break
-            time.sleep(i)
-        time.sleep(2)
+    # def wait_processed(self, num):
+    #     for i in range(0, num):
+    #         if self.is_processed():
+    #             break
+    #         time.sleep(i)
+    #     for i in range(0, num):
+    #         if self.num_processed() > num:
+    #             break
+    #         time.sleep(i)
+    #     time.sleep(2)
 
     def wait_for_status(self, status, id) -> str:
         print(f"Waiting '{id}' for {status}", end='')
+        finished = False
         for i in range(0, 3000):
+            if finished:
+                break
             for row in utils.query(f"SELECT * from jobs WHERE id={id}"):
-                if row['status'] in status:
+                if row and row['status'] in status and str(id) in str(row['id']):
+                    finished = True
                     break
                 print(f".{i}", end='')
-                time.sleep(1)
+                time.sleep(min(i, 3))
+
         print("")
 
     def wait_all_jobs_and_add(self, status, num, cmd, ttr) -> list:
@@ -104,48 +109,85 @@ class TestSum(unittest.TestCase):
         for row in curr:
             self.wait_for_status(id=row['id'], status=status)
 
-    @num_jobs(NUM_JOBS)
-    def test_success_jobs(self, num):
-        actual = self.wait_all_jobs_and_add(status='SUCCESS', num=num, cmd='exit 0', ttr='1000')
-        curr = utils.query(
-            f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
-        for row in curr:
-            self.assertEqual(row['status'], 'SUCCESS')
-        self.assertEqual(len(actual), len(curr))
-        self.assertEqual(len(curr), num)
+    # @num_jobs(NUM_WORKERS)
+    # def test_success_jobs(self, num):
+    #     actual = self.wait_all_jobs_and_add(status='SUCCESS', num=num, cmd='exit 0', ttr='1000')
+    #     curr = utils.query(
+    #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+    #     for row in curr:
+    #         self.assertEqual(row['status'], 'SUCCESS')
+    #     self.assertEqual(len(actual), len(curr))
+    #     self.assertEqual(len(curr), num)
+    #
+    # @num_jobs(NUM_WORKERS)
+    # def test_failed_jobs(self, num):
+    #     actual = self.wait_all_jobs_and_add(status='FAILED', num=num, cmd='exit 1', ttr='10100')
+    #     curr = utils.query(
+    #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+    #     for row in curr:
+    #         self.assertEqual(row['status'], 'FAILED')
+    #     self.assertEqual(len(actual), len(curr))
+    #     self.assertEqual(len(curr), num)
+    #
+    # @num_jobs(NUM_WORKERS)
+    # def test_cancelled_jobs(self, num):
+    #     actual = self.wait_all_jobs_and_add(status=self.running_state, num=num, cmd='sleep 10000', ttr='1000000')
+    #     utils.query(
+    #         f"UPDATE jobs SET status='{self.cancelled_state}' WHERE status IN ('{self.running_state}')")
+    #
+    #     self.wait_all_jobs('CANCELLED')
+    #
+    #     curr = utils.query(
+    #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+    #     for row in curr:
+    #         self.assertEqual(row['status'], 'CANCELLED')
+    #     self.assertEqual(len(actual), len(curr))
+    #     self.assertEqual(len(curr), num)
+    #
+    # @num_jobs(NUM_WORKERS)
+    # def test_timeout_jobs(self, num):
+    #     actual = self.wait_all_jobs_and_add(status='TIMEOUT', num=num, cmd='sleep 10000', ttr='3')
+    #
+    #     curr = utils.query(
+    #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+    #     for row in curr:
+    #         self.assertEqual(row['status'], 'TIMEOUT')
+    #
+    #     self.assertEqual(len(actual), len(curr))
+    #     self.assertEqual(len(curr), num)
+    #
+    # @num_jobs(NUM_WORKERS)
+    # def test_success_jobs_more_than_workers(self, n):
+    #     num = n * 100
+    #     actual = self.wait_all_jobs_and_add(status='SUCCESS', num=num, cmd='exit 0', ttr='1001')
+    #     curr = utils.query(
+    #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+    #     for row in curr:
+    #         self.assertEqual(row['status'], 'SUCCESS')
+    #     self.assertEqual(len(actual), len(curr))
+    #     self.assertEqual(len(curr), num)
+    #
+    # @num_jobs(NUM_WORKERS)
+    # def test_timeout_jobs_more_than_workers(self, n):
+    #     num = n * 10
+    #     actual = self.wait_all_jobs_and_add(status='TIMEOUT', num=num, cmd='sleep 10000', ttr='1')
+    #
+    #     curr = utils.query(
+    #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+    #     for row in curr:
+    #         self.assertEqual(row['status'], 'TIMEOUT')
+    #
+    #     self.assertEqual(len(actual), len(curr))
+    #     self.assertEqual(len(curr), num)
 
-    @num_jobs(NUM_JOBS)
-    def test_failed_jobs(self, num):
+    @num_jobs(NUM_WORKERS)
+    def test_failed_jobs_more_than_workers(self, n):
+        num = n * 2
         actual = self.wait_all_jobs_and_add(status='FAILED', num=num, cmd='exit 1', ttr='10100')
         curr = utils.query(
             f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
         for row in curr:
             self.assertEqual(row['status'], 'FAILED')
-        self.assertEqual(len(actual), len(curr))
-        self.assertEqual(len(curr), num)
-
-    @num_jobs(NUM_JOBS)
-    def test_cancelled_jobs(self, num):
-        actual = self.wait_all_jobs_and_add(status=self.running_state, num=num, cmd='sleep 10000', ttr='1000000')
-        utils.query(
-            f"UPDATE jobs SET status='{self.cancelled_state}' WHERE status IN ('{self.running_state}')")
-
-        self.wait_all_jobs('CANCELLED')
-
-        curr = utils.query(
-            f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
-        for row in curr:
-            self.assertEqual(row['status'], 'CANCELLED')
-        self.assertEqual(len(actual), len(curr))
-        self.assertEqual(len(curr), num)
-    @num_jobs(NUM_JOBS)
-    def test_timeout_jobs(self, num):
-        actual = self.wait_all_jobs_and_add(status='TIMEOUT', num=num, cmd='sleep 10000', ttr='3')
-
-        curr = utils.query(
-            f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
-        for row in curr:
-            self.assertEqual(row['status'], 'TIMEOUT')
 
         self.assertEqual(len(actual), len(curr))
         self.assertEqual(len(curr), num)

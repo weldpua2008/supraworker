@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/weldpua2008/supraworker/config"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
 	"io/ioutil"
 	"net/http"
@@ -291,5 +292,116 @@ func TestJobUpdateStatus(t *testing.T) {
 
 	if got != want {
 		t.Errorf("got '%s', want '%s'\n", got, want)
+	}
+}
+
+// Test Job status updates via HTTP Communicator
+func TestJobStatusCommunicators(t *testing.T) {
+	out := make(chan string, 1)
+
+	srv := config.NewFlakyTestServer(t, out, 15*time.Second)
+	defer func() {
+		srv.Close()
+		close(out)
+	}()
+
+	var yamlString = []byte(`
+    ClientId: "Test"
+    version: "1.0"
+    jobs:
+      run: &run
+        communicator: &comm
+          url: "` + srv.URL + `/"
+          method: get
+          params:
+            status: "{{ .Status }}"
+            job_id: "{{ .JobId }}"
+            run_id: "{{ .RunUID}}"
+            extra_run_id: "{{.ExtraRunUID}}"
+            previous_job_status: "{{.PreviousStatus}}"
+          codes:
+          - 200
+          - 201
+          backoff:
+            maxelapsedtime: 3s
+            maxinterval: 2s
+            initialinterval: 0s
+      failed: &failed
+        communicator:
+          <<: *comm
+      finish: &failed
+        communicator:
+          <<: *comm
+      timeout: &timeout
+        communicator:
+          <<: *comm
+      cancel: &cancel
+        communicator:
+          <<: *comm
+    `)
+
+	C, tmpC := config.StringToCfgForTests(t, yamlString)
+	config.C = C
+	defer func() {
+		config.C = tmpC
+	}()
+	outRun := `{ "status": "` + JOB_STATUS_IN_PROGRESS + `" }`
+	cases := []struct {
+		section string
+		in      string
+		out     string
+		cmd     string
+	}{
+		{
+			out:     `{ "status": "` + JOB_STATUS_ERROR + `" }`,
+			section: JOB_STATUS_ERROR,
+			cmd:     "echo S&&exit 1",
+		},
+		{
+			out:     `{ "status": "` + JOB_STATUS_SUCCESS + `" }`,
+			section: JOB_STATUS_SUCCESS,
+			cmd:     "echo S&&exit 0",
+		},
+		{
+			out:     `{ "status": "` + JOB_STATUS_CANCELED + `" }`,
+			section: JOB_STATUS_CANCELED,
+			cmd:     "echo S&&exit 0",
+		},
+		{
+			out:     `{ "status": "` + JOB_STATUS_TIMEOUT + `" }`,
+			section: JOB_STATUS_TIMEOUT,
+			cmd:     "echo S&&exit 0",
+		},
+	}
+	for _, tc := range cases {
+
+		job := NewTestJob(fmt.Sprintf("job-%v", cmdtest.GetFunctionName(t.Name)), cmdtest.CMDForTest("echo S&&exit 0"))
+		job.StreamInterval = 1 * time.Millisecond
+		job.ExtraRunUID = "1"
+		job.RunUID = "1"
+		out <- outRun
+		err := job.Run()
+		if err != nil {
+			t.Fatalf("Expected no error in %s, got '%v'\n", cmdtest.GetFunctionName(t.Name), err)
+		}
+		out <- tc.out
+		switch tc.section {
+		case JOB_STATUS_ERROR:
+			if errFail := job.Failed(); errFail != nil {
+				t.Fatalf("[Failed()] got: %v ", errFail)
+			}
+		case JOB_STATUS_SUCCESS:
+			if errFail := job.Finish(); errFail != nil {
+				t.Fatalf("[Finish()] got: %v ", errFail)
+			}
+		case JOB_STATUS_CANCELED:
+			if errFail := job.Cancel(); errFail != nil {
+				t.Fatalf("[Cancel()] got: %v ", errFail)
+			}
+		case JOB_STATUS_TIMEOUT:
+			if errFail := job.Timeout(); errFail != nil {
+				t.Fatalf("[Timeout()] got: %v ", errFail)
+			}
+		}
 	}
 }

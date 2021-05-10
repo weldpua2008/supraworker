@@ -194,7 +194,7 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 	defer s.mu.RUnlock()
 
 	allParams := config.GetStringMapStringTemplatedFromMap(s.section, s.param, from)
-	// log.Infof("\nall_params %v\ns.section %v , %v, \nfrom: %v", all_params, s.section, s.param,from)
+	//log.Infof("[%s] %v\ns.section %v , %v, \nfrom: %v", s.url, allParams, s.section, s.param,from)
 
 	for k, v := range params {
 		if v1, ok := v.(string); ok {
@@ -245,9 +245,6 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 		}
 		result = append(result, rawResponse)
 	}
-	// if !utils.ContainsInts(allowed_response_codes, resp.StatusCode) {
-	//     log.Tracef("\nMaking request %s  to %s \nwith %s\nStatusCode %d Response %s\n", s.method, s.url, jsonStr, resp.StatusCode, body)
-	// }
 
 	return result, nil
 
