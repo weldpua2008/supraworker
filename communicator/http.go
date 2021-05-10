@@ -196,7 +196,9 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-
+	if len(s.url) < 1 {
+		return nil, nil
+	}
 	allParams := config.GetStringMapStringTemplatedFromMap(s.section, s.param, from)
 	//log.Infof("[%s] %v\ns.section %v , %v, \nfrom: %v", s.url, allParams, s.section, s.param,from)
 
