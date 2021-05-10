@@ -127,7 +127,7 @@ func (s *RestCommunicator) Configure(params map[string]interface{}) error {
 //                         initialinterval: 10s
 
 func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interface{}) (result []map[string]interface{}, err error) {
-	try:=0
+	try := 0
 	operation := func() error {
 		res, err := s.fetch(ctx, params)
 		if err == nil {

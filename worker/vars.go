@@ -11,7 +11,7 @@ var (
 	// Number of active jobs
 	NumActiveJobs int
 	mu            sync.RWMutex
-	logFields		  = logrus.Fields{"package": "worker"}
+	logFields     = logrus.Fields{"package": "worker"}
 	log           = logrus.WithFields(logFields)
 	jobsProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "supraworker_processed_jobs_total",
