@@ -6,8 +6,11 @@ import (
 	"os/exec"
 )
 
+type ContextKey string
+
 const (
-	CTX_REQUEST_TIMEOUT = "ctx_req_timeout"
+	CtxKeyRequestTimeout ContextKey = "ctx_req_timeout"
+	CtxKeyRequestWorker  ContextKey = "ctx_req_worker_id"
 )
 
 var (

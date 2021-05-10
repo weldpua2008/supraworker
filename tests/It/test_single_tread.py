@@ -15,7 +15,7 @@ def num_jobs(number):
     return actual_decorator
 
 
-NUM_WORKERS = 50
+NUM_WORKERS = 10
 
 
 class TestSum(unittest.TestCase):
@@ -82,7 +82,7 @@ class TestSum(unittest.TestCase):
     def wait_for_status(self, status, id) -> str:
         print(f"Waiting '{id}' for {status}", end='')
         finished = False
-        for i in range(0, 3000):
+        for i in range(0, NUM_WORKERS+300):
             if finished:
                 break
             for row in utils.query(f"SELECT * from jobs WHERE id={id}"):
@@ -90,7 +90,7 @@ class TestSum(unittest.TestCase):
                     finished = True
                     break
                 print(f".{i}", end='')
-                time.sleep(min(i, 3))
+                time.sleep(min(i, 2))
 
         print("")
 
@@ -158,7 +158,7 @@ class TestSum(unittest.TestCase):
     #
     # @num_jobs(NUM_WORKERS)
     # def test_success_jobs_more_than_workers(self, n):
-    #     num = n * 100
+    #     num = n * 2
     #     actual = self.wait_all_jobs_and_add(status='SUCCESS', num=num, cmd='exit 0', ttr='1001')
     #     curr = utils.query(
     #         f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
@@ -166,10 +166,10 @@ class TestSum(unittest.TestCase):
     #         self.assertEqual(row['status'], 'SUCCESS')
     #     self.assertEqual(len(actual), len(curr))
     #     self.assertEqual(len(curr), num)
-    #
+
     # @num_jobs(NUM_WORKERS)
     # def test_timeout_jobs_more_than_workers(self, n):
-    #     num = n * 10
+    #     num = n * 2
     #     actual = self.wait_all_jobs_and_add(status='TIMEOUT', num=num, cmd='sleep 10000', ttr='1')
     #
     #     curr = utils.query(
@@ -183,6 +183,7 @@ class TestSum(unittest.TestCase):
     @num_jobs(NUM_WORKERS)
     def test_failed_jobs_more_than_workers(self, n):
         num = n * 2
+        num = 1
         actual = self.wait_all_jobs_and_add(status='FAILED', num=num, cmd='exit 1', ttr='10100')
         curr = utils.query(
             f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")

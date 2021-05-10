@@ -97,7 +97,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 			case <-tickerGenerateJobs.C:
 				start := time.Now()
 				// TODO: customize timeout
-				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CTX_REQUEST_TIMEOUT, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
+				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CtxKeyRequestTimeout, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
 					metrics.FetchNewJobLatency.WithLabelValues("api_get").Observe(float64(time.Since(start).Nanoseconds()))
 					//if len(jobsData) > 128 {
 					//	log.Tracef("Parsing %d new jobs from response", len(jobsData))
@@ -227,7 +227,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				stage := "jobs.cancelation"
 				params := model.GetAPIParamsFromSection(stage)
 
-				if err, jobsCancellationData := model.DoApiCall(context.WithValue(ctx, model.CTX_REQUEST_TIMEOUT, maxRequestTimeout), params, stage); err != nil {
+				if err, jobsCancellationData := model.DoApiCall(context.WithValue(ctx, model.CtxKeyRequestTimeout, maxRequestTimeout), params, stage); err != nil {
 					metrics.FetchCancelLatency.WithLabelValues("failed_query").Observe(float64(time.Since(start).Nanoseconds()))
 					log.Tracef("failed to update api, got: %s and %s", jobsCancellationData, err)
 				} else {

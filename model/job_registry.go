@@ -134,18 +134,3 @@ func (r *Registry) Record(jid string) (*Job, bool) {
 
 	return nil, false
 }
-
-// Record fetch all jobs.
-// Follows comma ok idiom
-func (r *Registry) All() []Job {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	if r.all == nil {
-		return []Job{}
-	}
-	res := make([]Job, len(r.all))
-	for _, v := range r.all {
-		res = append(res, *v)
-	}
-	return res
-}

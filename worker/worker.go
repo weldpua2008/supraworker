@@ -41,7 +41,7 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	for j := range jobs {
 
 		logJob := logWorker.WithField("job_id", j.Id)
-		ctx := context.WithValue(*j.GetContext(), "worker", id)
+		ctx := context.WithValue(*j.GetContext(), model.CtxKeyRequestWorker, id)
 		j.SetContext(ctx)
 
 		logJob.Tracef("New Job with TTR %v", time.Duration(j.TTR)*time.Millisecond)

@@ -298,11 +298,12 @@ func TestJobUpdateStatus(t *testing.T) {
 // Test Job status updates via HTTP Communicator
 func TestJobStatusCommunicators(t *testing.T) {
 	out := make(chan string, 1)
-
+	cmdtest.StartTrace()
 	srv := config.NewFlakyTestServer(t, out, 15*time.Second)
 	defer func() {
 		srv.Close()
 		close(out)
+		cmdtest.RestoreLevel()
 	}()
 
 	var yamlString = []byte(`
@@ -323,8 +324,8 @@ func TestJobStatusCommunicators(t *testing.T) {
           - 200
           - 201
           backoff:
-            maxelapsedtime: 3s
-            maxinterval: 2s
+            maxelapsedtime: 30s
+            maxinterval: 20s
             initialinterval: 0s
       failed: &failed
         communicator:

@@ -1,5 +1,5 @@
 clientId: "exampleclient"
-workers: 51
+workers: 10
 api_delay_sec: 1
 headers:
   "Content-type": "application/json"
@@ -38,8 +38,8 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 1300s
-        maxinterval: 1200s
+        maxelapsedtime: 301s
+        maxinterval: 300s
         initialinterval: 1s
 
   finish: &finish
@@ -50,8 +50,8 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 1300s
-        maxinterval: 1200s
+        maxelapsedtime: 301s
+        maxinterval: 300s
         initialinterval: 1s
       params:
         job_status: "SUCCESS"
@@ -67,8 +67,8 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 1300s
-        maxinterval: 1200s
+        maxelapsedtime: 301s
+        maxinterval: 300s
         initialinterval: 1s
       params:
         job_status: "FAILED"
@@ -84,8 +84,8 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 1300s
-        maxinterval: 1200s
+        maxelapsedtime: 301s
+        maxinterval: 300s
         initialinterval: 1s
       params:
         job_status: "TIMEOUT"
@@ -101,8 +101,8 @@ jobs:
         - 200
         - 201
       backoff:
-        maxelapsedtime: 1300s
-        maxinterval: 1200s
+        maxelapsedtime: 301s
+        maxinterval: 300s
         initialinterval: 1s
       params:
         job_status: "CANCELLED"

@@ -127,13 +127,17 @@ func (s *RestCommunicator) Configure(params map[string]interface{}) error {
 //                         initialinterval: 10s
 
 func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interface{}) (result []map[string]interface{}, err error) {
+	try:=0
 	operation := func() error {
 		res, err := s.fetch(ctx, params)
 		if err == nil {
 			result = res
+			//log.Tracef("Fetching %s [%s] try [%d]", s.url, s.method, try)
+
 		} else {
-			log.Tracef("Fetch for %v [%v] should retry", s.url, s.method)
+			log.Tracef("Fetch for %s [%s] should retry [%d]", s.url, s.method, try)
 		}
+		try += 1
 		return err
 	}
 	// log.Warningf( "Fetch  %v", params)

@@ -89,7 +89,7 @@ func DoApi(ctx context.Context, params map[string]interface{}, stage string) err
 		ctx = context.Background()
 	}
 	defaultRequestTimeout := time.Duration(60) * time.Second
-	if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+	if value := ctx.Value(CtxKeyRequestTimeout); value != nil {
 		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
 			defaultRequestTimeout = duration
 		} else {
@@ -148,7 +148,7 @@ func DoApiCall(ctx context.Context, params map[string]string, stage string) (err
 	defaultRequestTimeout := 60 * time.Second
 	// TODO: Add a test
 	if ctx != nil {
-		if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+		if value := ctx.Value(CtxKeyRequestTimeout); value != nil {
 			if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
 				defaultRequestTimeout = duration
 			} else {
@@ -217,7 +217,7 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 	defaultRequestTimeout := 60 * time.Second
 	// TODO: Add a test
 	if ctx != nil {
-		if value := ctx.Value(CTX_REQUEST_TIMEOUT); value != nil {
+		if value := ctx.Value(CtxKeyRequestTimeout); value != nil {
 			if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
 				defaultRequestTimeout = duration
 			} else {

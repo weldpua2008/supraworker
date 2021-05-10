@@ -243,10 +243,12 @@ class RunJob(Resource):
                 }
                 # logger.info(f" update job {job_id} with {_ret}")
         except Exception as e:
-            ret = {}
+            # ret = "Error"
+            status_code = 500
             error_type = type(e).__name__
+            ret = f"{error_type} = {status_code}"
             logger.info(f"Got error {error_type} {e}")
             # logger.info(f"Got error {error_type} {e} {traceback.print_stack(limit=10)}")
             # ret['error_msg'] = f"{error_type}: {e}"
-            ret['has_error'] = True
+            # ret['has_error'] = True
         return ret, status_code
