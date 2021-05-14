@@ -8,10 +8,10 @@ import logging
 def progressbar(iterable: Collection, fill_char: str = '█', end: str = "\r") -> Iterator:
     """
     Progress Bar Printing Function
-    :param iterable: we iterate
-    :param fill_char: fill character
+    :param iterable: the collection we iterate
+    :param fill_char: fill character for progressbar
     :param end: line end character
-    :return:
+    :return: iterated item
     """
     total = len(iterable)
     prefix = 'Progress [ ]:'
