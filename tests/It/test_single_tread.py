@@ -4,21 +4,19 @@ import time
 import functools
 import inspect
 
+NUM_WORKERS = 40  # Number of supersonic workers
+
+
 def num_jobs(number):
     def actual_decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, number, **kwargs)
-
         return wrapper
-
     return actual_decorator
 
 
-NUM_WORKERS = 40
-
-
-def wait_for_status(status, job_id) -> str:
+def wait_single_job_status(status, job_id) -> str:
     finished = False
     for i in range(0, NUM_WORKERS + 300):
         if finished:
@@ -30,12 +28,13 @@ def wait_for_status(status, job_id) -> str:
             time.sleep(min(i, 2))
 
 
-def wait_all_jobs(status) -> None:
+def wait_all_jobs(status: str) -> None:
+    """Waits for Job status with progress bar"""
 
     curr = utils.query(
         f"SELECT * from jobs ORDER BY id")
     for row in utils.progressbar(curr):
-        wait_for_status(job_id=row['id'], status=status)
+        wait_single_job_status(job_id=row['id'], status=status)
 
 
 class TestSum(unittest.TestCase):
@@ -156,8 +155,7 @@ class TestSum(unittest.TestCase):
     @num_jobs(NUM_WORKERS)
     def test_failed_jobs_more_than_workers(self, n):
         num = n * 2
-        # num = 1
-        actual = self.wait_all_jobs_and_add(status='FAILED', num=num, cmd='exit 1', ttr='10100')
+        actual = self.wait_all_jobs_and_add(status='FAILED', num=num, cmd='exit 2', ttr='10100')
         curr = utils.query(
             f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
         for row in curr:
