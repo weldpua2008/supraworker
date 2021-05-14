@@ -87,7 +87,7 @@ func TestStreamApi(t *testing.T) {
 	}
 
 	if job.GetStatus() != JOB_STATUS_RUN_OK {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.GetStatus())
 	}
 
 	if got != want {
@@ -151,7 +151,7 @@ func TestLongLineStreamApi(t *testing.T) {
 	}
 
 	if job.GetStatus() != JOB_STATUS_RUN_OK {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.GetStatus())
 	}
 
 	if got != want {
@@ -167,7 +167,7 @@ func TestExecuteJobSuccess(t *testing.T) {
 		t.Errorf("Expected no error in %s, got %v\n", cmdtest.GetFunctionName(t.Name), err)
 	}
 	if job.GetStatus() != JOB_STATUS_RUN_OK {
-		t.Errorf("Expected %s, got %s", JOB_STATUS_RUN_OK, job.Status)
+		t.Errorf("Expected %s, got %s", JOB_STATUS_RUN_OK, job.GetStatus())
 	}
 }
 
@@ -179,7 +179,7 @@ func TestExecuteJobError(t *testing.T) {
 		t.Errorf("Expected  error, got %v\n", err)
 	}
 	if job.GetStatus() != JOB_STATUS_RUN_FAILED {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_FAILED, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_FAILED, job.GetStatus())
 	}
 
 }
@@ -203,30 +203,30 @@ func TestExecuteJobCancel(t *testing.T) {
 	<-started
 	// time.Sleep(10 * time.Millisecond)
 	for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
-		// t.Errorf("job.Status %v",job.Status)
+		// t.Errorf("job.GetStatus() %v",job.GetStatus())
 		time.Sleep(10 * time.Millisecond)
 	}
 	if errUpdate := job.Cancel(); errUpdate != nil {
-		log.Tracef("failed cancel %s status '%s'", job.Id, job.Status)
+		log.Tracef("failed cancel %s status '%s'", job.Id, job.GetStatus())
 	}
 
 	<-done
 	//if job.GetStatus() != JOB_STATUS_CANCELED {
 	if job.GetStatus() != JOB_STATUS_CANCELED {
 
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.Status)
+		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.GetStatus())
 	}
 }
 
 func TestJobFailed(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.GetStatus() == JOB_STATUS_ERROR {
-		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_ERROR)
+		t.Errorf("job.GetStatus() '%s' same '%s'\n", job.GetStatus(), JOB_STATUS_ERROR)
 	}
 	if errUpdate := job.Failed(); errUpdate != nil {
-		log.Tracef("failed Failed %s status '%s'", job.Id, job.Status)
+		log.Tracef("failed Failed %s status '%s'", job.Id, job.GetStatus())
 	}
-	got := job.Status
+	got := job.GetStatus()
 	want := JOB_STATUS_ERROR
 
 	if got != want {
@@ -237,14 +237,14 @@ func TestJobFailed(t *testing.T) {
 func TestJobFinished(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.GetStatus() == JOB_STATUS_SUCCESS {
-		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_SUCCESS)
+		t.Errorf("job.GetStatus() '%s' same '%s'\n", job.GetStatus(), JOB_STATUS_SUCCESS)
 	}
 
 	if errUpdate := job.Finish(); errUpdate != nil {
-		log.Tracef("failed Finish %s status '%s'", job.Id, job.Status)
+		log.Tracef("failed Finish %s status '%s'", job.Id, job.GetStatus())
 	}
 
-	got := job.Status
+	got := job.GetStatus()
 	want := JOB_STATUS_SUCCESS
 
 	if got != want {
@@ -255,13 +255,13 @@ func TestJobFinished(t *testing.T) {
 func TestJobCancel(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.GetStatus() == JOB_STATUS_CANCELED {
-		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_CANCELED)
+		t.Errorf("job.GetStatus() '%s' same '%s'\n", job.GetStatus(), JOB_STATUS_CANCELED)
 	}
 	if errUpdate := job.Cancel(); errUpdate != nil {
-		log.Tracef("failed Cancel %s status '%s'", job.Id, job.Status)
+		log.Tracef("failed Cancel %s status '%s'", job.Id, job.GetStatus())
 	}
 
-	got := job.Status
+	got := job.GetStatus()
 	want := JOB_STATUS_CANCELED
 
 	if got != want {
@@ -283,10 +283,10 @@ func TestJobUpdateActivity(t *testing.T) {
 func TestJobUpdateStatus(t *testing.T) {
 	job := NewTestJob("echo", "echo")
 	if job.GetStatus() == JOB_STATUS_SUCCESS {
-		t.Errorf("job.Status '%s' same '%s'\n", job.Status, JOB_STATUS_PENDING)
+		t.Errorf("job.GetStatus() '%s' same '%s'\n", job.GetStatus(), JOB_STATUS_PENDING)
 	}
 	_ = job.updateStatus(JOB_STATUS_SUCCESS)
-	got := job.Status
+	got := job.GetStatus()
 
 	want := JOB_STATUS_SUCCESS
 

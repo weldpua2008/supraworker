@@ -84,8 +84,8 @@ func (j *Job) StoreKey() string {
 
 // GetStatus get job status.
 func (j *Job) GetStatus() string {
-	j.mu.Lock()
-	defer j.mu.Unlock()
+	j.mu.RLock()
+	defer j.mu.RUnlock()
 	return j.Status
 }
 
@@ -459,7 +459,7 @@ func (j *Job) runcmd() error {
 	if errUpdate := j.updateStatus(JOB_STATUS_IN_PROGRESS); errUpdate != nil {
 		j.GetLogger().Tracef("failed to change status '%s' -> '%s'", j.Status, JOB_STATUS_IN_PROGRESS)
 	}
-	j.mu.Unlock()
+
 	if err != nil && j.cmd.Process != nil {
 		j.GetLogger().Tracef("CMD: %s [%d]\n", j.cmd, j.cmd.Process.Pid)
 	} else {
@@ -471,6 +471,7 @@ func (j *Job) runcmd() error {
 	if err := DoApi(context.Background(), params, stage); err != nil {
 		j.GetLogger().Warnf("[%s] %s", j.Id, err)
 	}
+	j.mu.Unlock()
 	if err != nil {
 		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
 		return fmt.Errorf("cmd.Start, %s", err)
@@ -539,7 +540,6 @@ func (j *Job) runcmd() error {
 		}
 		*/
 	}
-	j.alreadyStopped = true
 	// signal that we've read all logs
 	j.notifyStopStreams <- struct{}{}
 	status := j.cmd.ProcessState.Sys()
@@ -552,6 +552,7 @@ func (j *Job) runcmd() error {
 	j.ExitCode = exitCode
 	j.mu.Lock()
 	defer j.mu.Unlock()
+	j.alreadyStopped = true
 
 	switch {
 	case j.Status == JOB_STATUS_CANCELED:
