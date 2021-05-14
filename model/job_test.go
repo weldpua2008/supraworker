@@ -82,7 +82,7 @@ func TestStreamApi(t *testing.T) {
 	case <-notifyStdoutSent:
 		log.Trace("notifyStdoutSent")
 	case <-time.After(10 * time.Second):
-		t.Errorf("timed out")
+		t.Fatalf("timed out")
 	}
 
 	if job.GetStatus() != JOB_STATUS_RUN_OK {
@@ -97,7 +97,6 @@ func TestStreamApi(t *testing.T) {
 // TODO: test on 655361
 func TestLongLineStreamApi(t *testing.T) {
 	repeats := 65531
-	// repeats:= 655361
 	want := fmt.Sprintf("{\"job_uid\":\"job_uid\",\"msg\":\"'%v'\\n\",\"run_uid\":\"1\"}", strings.Repeat("a", repeats))
 	var got string
 	notifyStdoutSent := make(chan bool)
@@ -108,10 +107,9 @@ func TestLongLineStreamApi(t *testing.T) {
 		if err != nil {
 			t.Errorf("ReadAll %s", err)
 		}
-		got = string(fmt.Sprintf("%s", b))
+		got = fmt.Sprintf("%s", b)
 		notifyStdoutSent <- true
 	}))
-	//logrus.SetLevel(logrus.TraceLevel)
 	defer func() {
 		srv.Close()
 		restoreLevel()
@@ -138,21 +136,21 @@ func TestLongLineStreamApi(t *testing.T) {
 	job.ResetBackPressureTimer = time.Duration(450) * time.Millisecond
 	err := job.Run()
 	if err != nil {
-		t.Errorf("Expected no error in %s, got '%v'\n", cmdtest.GetFunctionName(t.Name), err)
+		t.Fatalf("Expected no error in %s, got '%v'\n", cmdtest.GetFunctionName(t.Name), err)
 	}
 	select {
 	case <-notifyStdoutSent:
 		log.Trace("notifyStdoutSent")
 	case <-time.After(5 * time.Second):
-		t.Errorf("timed out")
+		t.Fatalf("timed out")
 	}
 
 	if job.GetStatus() != JOB_STATUS_RUN_OK {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.GetStatus())
+		t.Fatalf("Expected %s, got %s\n", JOB_STATUS_RUN_OK, job.GetStatus())
 	}
 
 	if got != want {
-		t.Errorf("want %s, got %v", want, got)
+		t.Fatalf("want %s, got %v", want, got)
 	}
 }
 
@@ -161,10 +159,10 @@ func TestExecuteJobSuccess(t *testing.T) {
 	err := job.Run()
 
 	if err != nil {
-		t.Errorf("Expected no error in %s, got %v\n", cmdtest.GetFunctionName(t.Name), err)
+		t.Fatalf("Expected no error in %s, got %v\n", cmdtest.GetFunctionName(t.Name), err)
 	}
 	if job.GetStatus() != JOB_STATUS_RUN_OK {
-		t.Errorf("Expected %s, got %s", JOB_STATUS_RUN_OK, job.GetStatus())
+		t.Fatalf("Expected %s, got %s", JOB_STATUS_RUN_OK, job.GetStatus())
 	}
 }
 
@@ -173,10 +171,10 @@ func TestExecuteJobError(t *testing.T) {
 	err := job.Run()
 
 	if err == nil {
-		t.Errorf("Expected  error, got %v\n", err)
+		t.Fatalf("Expected  error, got %v\n", err)
 	}
 	if job.GetStatus() != JOB_STATUS_RUN_FAILED {
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_RUN_FAILED, job.GetStatus())
+		t.Fatalf("Expected %s, got %s\n", JOB_STATUS_RUN_FAILED, job.GetStatus())
 	}
 
 }
@@ -187,31 +185,38 @@ func TestExecuteJobCancel(t *testing.T) {
 	job.TTR = 10000000
 
 	go func() {
+		// Run Job in the go routine because it's blocking
 		defer func() { done <- true }()
-		started <- true
 		err := job.Run()
 		if err == nil {
-			//done <- true
-			t.Errorf("Expected  error for job %v\n, got %v\n", job, err)
+			t.Fatalf("Expected  error for job %v\n, got %v\n", job, err)
 		}
-		// log.Info(err)
-		// log.Info("TestExecuteJobCancel finished")
 	}()
-	<-started
-	// time.Sleep(10 * time.Millisecond)
-	for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
-		// t.Errorf("job.GetStatus() %v",job.GetStatus())
-		time.Sleep(10 * time.Millisecond)
+
+	go func() {
+		// waiting for a status
+		defer func() { started <- true }()
+		for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+	select {
+	case <-started:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("timed out")
 	}
+
 	if errUpdate := job.Cancel(); errUpdate != nil {
 		log.Tracef("failed cancel %s status '%s'", job.Id, job.GetStatus())
 	}
 
-	<-done
-	//if job.GetStatus() != JOB_STATUS_CANCELED {
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("timed out")
+	}
 	if job.GetStatus() != JOB_STATUS_CANCELED {
-
-		t.Errorf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.GetStatus())
+		t.Fatalf("Expected %s, got %s\n", JOB_STATUS_CANCELED, job.GetStatus())
 	}
 }
 
