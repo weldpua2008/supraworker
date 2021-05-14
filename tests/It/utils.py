@@ -1,6 +1,38 @@
+from typing import Iterator, Iterable, Collection
+
 import mysql.connector
 import config
 import logging
+
+
+def progressbar(iterable: Collection, fill_char: str = '█', end: str = "\r") -> Iterator:
+    """
+    Progress Bar Printing Function
+    :param iterable: we iterate
+    :param fill_char: fill character
+    :param end: line end character
+    :return:
+    """
+    total = len(iterable)
+    prefix = 'Progress [ ]:'
+    suffix = 'Complete'
+    bar_length: int = 100
+
+    def print_progress_bar(iteration):
+        percent = "{0:.1f}".format(100 * (iteration / float(total)))
+        filled_length = int(bar_length * iteration // total)
+        bar = fill_char * filled_length + '-' * (bar_length - filled_length)
+        print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=end)
+
+    # Init
+    print_progress_bar(0)
+    # Update Progress Bar
+    for i, item in enumerate(iterable):
+        prefix = f"Progress [{item['id']}]:"
+        yield item
+        print_progress_bar(i + 1)
+    # New Line on Complete
+    print()
 
 
 def query(sql, params=()):
@@ -33,9 +65,9 @@ def query(sql, params=()):
 
 
 def truncate():
-    query(f"TRUNCATE TABLE { config.config.get('MYSQL_DATABASE_TABLE')}")
+    query(f"TRUNCATE TABLE {config.config.get('MYSQL_DATABASE_TABLE')}")
     logging.info("Truncating table")
-    query(f"ALTER TABLE { config.config.get('MYSQL_DATABASE_TABLE')}  AUTO_INCREMENT=0")
+    query(f"ALTER TABLE {config.config.get('MYSQL_DATABASE_TABLE')}  AUTO_INCREMENT=0")
     logging.info("Reseting autoincrement")
 
     # query(

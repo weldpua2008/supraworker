@@ -132,8 +132,9 @@ func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interfac
 		res, err := s.fetch(ctx, params)
 		if err == nil {
 			result = res
-			//log.Tracef("Fetching %s [%s] try [%d]", s.url, s.method, try)
-
+			//if try > 1 {
+			//	log.Tracef("Successfully updated %s [%s] on [%d]", s.url, s.method, try)
+			//}
 		} else {
 			log.Tracef("Fetch for %s [%s] should retry [%d]", s.url, s.method, try)
 		}

@@ -11,3 +11,6 @@ docker-compose up -d
 
 export PYTHONPATH=$PTHONPATH:./It/
 python3 -m unittest discover -p 'test_*.py'
+ret=$?
+docker-compose down
+exit $ret
