@@ -3,7 +3,6 @@ package model
 import (
 	"bytes"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/weldpua2008/supraworker/config"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
@@ -112,14 +111,12 @@ func TestLongLineStreamApi(t *testing.T) {
 		got = string(fmt.Sprintf("%s", b))
 		notifyStdoutSent <- true
 	}))
-	logrus.SetLevel(logrus.TraceLevel)
+	//logrus.SetLevel(logrus.TraceLevel)
 	defer func() {
 		srv.Close()
-		// StreamingAPIURL = ""
 		restoreLevel()
 	}()
 	// cmdtest.StartTrace()
-	// StreamingAPIURL = srv.URL
 	viper.SetConfigType("yaml")
 	var yamlExample = []byte(`
     jobs:
@@ -299,12 +296,12 @@ func TestJobUpdateStatus(t *testing.T) {
 func TestJobStatusCommunicators(t *testing.T) {
 	isFlakyNow := make(chan bool, 1)
 	out := make(chan string, 1)
-	cmdtest.StartTrace()
+	//cmdtest.StartTrace()
 	srv := config.NewFlakyTestServer(t, out, isFlakyNow, 15*time.Second)
 	defer func() {
 		srv.Close()
 		close(out)
-		cmdtest.RestoreLevel()
+		//cmdtest.RestoreLevel()
 	}()
 
 	var yamlString = []byte(`

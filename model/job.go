@@ -246,7 +246,7 @@ func (j *Job) Cancel() error {
 			j.GetLogger().Tracef("[Cancel] call API got %s", err)
 		}
 	} else if j.Status != JOB_STATUS_CANCELED {
-		j.GetLogger().Warningf("[CANCEL] already in terminal state %s", j.Status)
+		j.GetLogger().Tracef("[CANCEL] already in terminal state %s", j.Status)
 	}
 	return j.stopProcess()
 }
@@ -270,7 +270,7 @@ func (j *Job) Failed() (cancelError error) {
 			j.GetLogger().Tracef("[Failed] call API got error %s", err)
 		}
 	} else if j.Status != JOB_STATUS_ERROR {
-		j.GetLogger().Warningf("[FAILED] already in terminal state %s", j.Status)
+		j.GetLogger().Tracef("[FAILED] already in terminal state %s", j.Status)
 	}
 	return j.stopProcess()
 }
@@ -295,7 +295,7 @@ func (j *Job) Timeout() error {
 			j.GetLogger().Tracef("[DoApi] error %s", err)
 		}
 	} else if j.Status != JOB_STATUS_TIMEOUT {
-		j.GetLogger().Warningf("[TIMEOUT] is already in terminal state %s", j.Status)
+		j.GetLogger().Tracef("[TIMEOUT] is already in terminal state %s", j.Status)
 	}
 
 	return j.stopProcess()

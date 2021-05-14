@@ -86,24 +86,24 @@ func TestRegistryCleanup(t *testing.T) {
 	for ii := 0; ii < num; ii++ {
 		job := NewJob(fmt.Sprintf("job-%v", ii), "echo")
 		job.TTR = 10000
-		// no cancelation flow on cleanup
+		// no cancellation flow on cleanup
 		// right now it won't execute something
 		job.Status = JOB_STATUS_CANCELED
 
 		if !r.Add(job) {
-			t.Errorf("Expect to add job")
+			t.Fatalf("Expect to add job")
 		}
 		n := r.Len()
 		if (r.Cleanup() > 0) || (r.Len() != n) {
-			t.Errorf("Expect no job to be already deleted by Cleanup")
+			t.Fatalf("Expect no job to be already deleted by Cleanup")
 		}
 		job.StartAt = time.Now().Add(time.Duration(-10001) * time.Millisecond)
 		if (r.Cleanup() == 0) || (r.Len() == n) {
-			t.Errorf("Expect Job to be deleted by Cleanup due to TTR")
+			t.Fatalf("Expect Job to be deleted by Cleanup due to TTR")
 		}
 
 	}
 	if r.Len() != 0 {
-		t.Errorf("Expect %v got length %v", num, r.Len())
+		t.Fatalf("Expect %v got length %v", num, r.Len())
 	}
 }

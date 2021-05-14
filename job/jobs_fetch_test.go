@@ -16,9 +16,9 @@ import (
 	"time"
 )
 
-func init() {
-	cmdtest.StartTrace()
-}
+//func init() {
+//	cmdtest.StartTrace()
+//}
 func TestHelperProcess(t *testing.T) {
 	cmdtest.TestHelperProcess(t)
 }
