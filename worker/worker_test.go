@@ -37,7 +37,7 @@ func TestExecuteJobSuccess(t *testing.T) {
 	jobs <- jobOne
 	close(jobs)
 	wg.Wait()
-	if jobOne.Status != model.JOB_STATUS_SUCCESS {
+	if jobOne.GetStatus() != model.JOB_STATUS_SUCCESS {
 		t.Errorf("Expected %s, got %s\n", model.JOB_STATUS_SUCCESS, jobOne.Status)
 	}
 }
@@ -55,15 +55,15 @@ func TestExecuteJobFail(t *testing.T) {
 	jobs <- jobOne
 	close(jobs)
 	wg.Wait()
-	if jobOne.Status != model.JOB_STATUS_ERROR {
+	if jobOne.GetStatus() != model.JOB_STATUS_ERROR {
 		t.Errorf("Expected %s, got %s\n", model.JOB_STATUS_ERROR, jobOne.Status)
 	}
 }
 
-func TestExecuteJobContextCancel(t *testing.T) {
+func TestExecuteJobContextDeadlineExceeded(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel() // cancel when we are getting the kill signal or exit
-	time.Sleep(1 * time.Millisecond)
+	time.Sleep(2 * time.Millisecond)
 	var wg sync.WaitGroup
 	jobs := make(chan *model.Job, 1)
 
@@ -77,7 +77,7 @@ func TestExecuteJobContextCancel(t *testing.T) {
 	jobs <- jobOne
 	close(jobs)
 	wg.Wait()
-	if jobOne.Status != model.JOB_STATUS_ERROR {
+	if jobOne.GetStatus() != model.JOB_STATUS_ERROR {
 		t.Errorf("Expected %s, got %s\n", model.JOB_STATUS_ERROR, jobOne.Status)
 	}
 }
@@ -95,8 +95,7 @@ func TestExecuteJobTTRCanceled(t *testing.T) {
 	jobs <- jobOne
 	close(jobs)
 	wg.Wait()
-	// time.Sleep(10 * time.Millisecond)
-	if jobOne.Status != model.JOB_STATUS_TIMEOUT {
+	if jobOne.GetStatus() != model.JOB_STATUS_TIMEOUT {
 		t.Errorf("Expected %s, got %s\n", model.JOB_STATUS_TIMEOUT, jobOne.Status)
 	}
 }

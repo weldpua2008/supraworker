@@ -650,8 +650,8 @@ func (j *Job) SetContext(ctx context.Context) {
 
 // GetContext for job
 func (j *Job) GetContext() *context.Context {
-	j.mu.Lock()
-	defer j.mu.Unlock()
+	j.mu.RLock()
+	defer j.mu.RUnlock()
 	if j.ctx == nil {
 		ctx := context.Background()
 		return &ctx
