@@ -42,7 +42,6 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 
 		ctx := j.GetContext()
 		j.SetContext(utils.FromWorkerID(*ctx, fmt.Sprintf("worker-%d", id)))
-		//j.AddToContext(utils.CtxWorkerIdKey, id)
 		logJob := j.GetLogger()
 
 		logJob.Tracef("New Job with TTR %v", time.Duration(j.TTR)*time.Millisecond)

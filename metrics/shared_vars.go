@@ -37,22 +37,7 @@ var (
 			"operation",
 		},
 	)
-	RegistryStatistics = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "supraworker",
-			Subsystem: "registry",
-			Name:      "calls",
-			Help:      "Number of API calls to registry by Type.",
-		},
-		[]string{
-			// For example Worker
-			"initiator",
-			// Of what type is the request?
-			"type",
-			// What is the Operation?
-			"operation",
-		},
-	)
+
 	JobsFetchDuplicates = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "supraworker_fetch_jobs_duplicates_total",
 		Help: "The total number of fetched duplicated jobs",
@@ -65,40 +50,4 @@ var (
 		Name: "supraworker_jobs_cancelled_total",
 		Help: "The total number of CANCELLED jobs",
 	})
-
-//
-//	ApiCallsStatistics = promauto.NewCounterVec(
-//		prometheus.CounterOpts{
-//			Namespace: "suprasched",
-//			Subsystem: "api",
-//			Name:      "calls",
-//			Help:      "Number of API calls to 3rd party API partitioned by Type.",
-//		},
-//		[]string{
-//			// For example Amazon
-//			"provider",
-//			// Which profile is used?
-//			"profile",
-//			// Of what type is the request?
-//			"type",
-//			// What is the Operation?
-//			"operation",
-//		},
-//	)
-//
-//	ReqClustersTerminated = promauto.NewCounterVec(prometheus.CounterOpts{
-//		Namespace: "suprasched",
-//		Subsystem: "req_clusters",
-//		Name:      "terminated_total",
-//		Help:      "Number of API calls for Cluster termination to 3rd party API partitioned by Type.",
-//	},
-//		[]string{
-//			// For example Amazon
-//			"provider",
-//			// Which profile is used?
-//			"profile",
-//			// Of what type is the request?
-//			"type",
-//		},
-//	)
 )

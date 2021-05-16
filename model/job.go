@@ -162,12 +162,6 @@ func (j *Job) GetRawParams() []map[string]interface{} {
 	return j.RawParams
 }
 
-// PutRawParams for all next calls
-//func (j *Job) PutRawParams(params []map[string]interface{}) error {
-//	j.RawParams = params
-//	return nil
-//}
-
 // GetAPIParams for stage from all previous calls
 func (j *Job) GetAPIParams(stage string) map[string]string {
 	c := make(map[string]string)
@@ -243,11 +237,6 @@ func (j *Job) Cancel() error {
 		}
 		j.doApiCall("cancel")
 
-		//stage := "cancel"
-		//params := j.GetParamsWithResend(stage)
-		//if err := DoApi(context.Background(), params, stage); err != nil {
-		//	j.GetLogger().Tracef("[Cancel] call API got %s", err)
-		//}
 	} else if j.Status != JOB_STATUS_CANCELED {
 		j.GetLogger().Tracef("[CANCEL] already in terminal state %s", j.Status)
 	}
@@ -268,12 +257,6 @@ func (j *Job) Failed() (cancelError error) {
 			j.GetLogger().Warningf("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
 		}
 		j.doApiCall("failed")
-
-		//stage := "failed"
-		//params := j.GetParamsWithResend(stage)
-		//if err := DoApi(context.Background(), params, stage); err != nil {
-		//	j.GetLogger().Tracef("[Failed] call API got error %s", err)
-		//}
 	} else if j.Status != JOB_STATUS_ERROR {
 		j.GetLogger().Tracef("[FAILED] already in terminal state %s", j.Status)
 	}
@@ -296,11 +279,6 @@ func (j *Job) Timeout() error {
 		j.updatelastActivity()
 		j.doApiCall("timeout")
 
-		//stage := "timeout"
-		//params := j.GetParamsWithResend(stage)
-		//if err := DoApi(context.Background(), params, stage); err != nil {
-		//	j.GetLogger().Tracef("[DoApi] error %s", err)
-		//}
 	} else if j.Status != JOB_STATUS_TIMEOUT {
 		j.GetLogger().Tracef("[TIMEOUT] is already in terminal state %s", j.Status)
 	}
@@ -474,12 +452,6 @@ func (j *Job) runcmd() error {
 	}
 	// update API
 	j.doApiCall("run")
-
-	//stage := "run"
-	//params := j.GetParamsWithResend(stage)
-	//if err := DoApi(context.Background(), params, stage); err != nil {
-	//	j.GetLogger().Warnf("[%s] %s", j.Id, err)
-	//}
 	j.mu.Unlock()
 	if err != nil {
 		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
@@ -620,17 +592,8 @@ func (j *Job) Finish() error {
 	if errUpdate := j.updateStatus(JOB_STATUS_SUCCESS); errUpdate != nil {
 		j.GetLogger().Tracef("failed to change status '%s' -> '%s'", j.Status, JOB_STATUS_SUCCESS)
 	}
-	//stage := "jobs.finish"
-	//params := j.GetAPIParams(stage)
-	//if err, result := DoApiCall(j.ctx, params, stage); err != nil {
-	//	log.Tracef("failed to update api, got: %s and %s", result, err)
-	//}
+
 	j.doApiCall("finish")
-	//stage := "finish"
-	//params := j.GetParamsWithResend(stage)
-	//if err := DoApi(context.Background(), params, stage); err != nil {
-	//	j.GetLogger().Tracef("[%s] %s", j.Id, err)
-	//}
 	return nil
 }
 
@@ -665,7 +628,7 @@ func (j *Job) AddToContext(key interface{}, value interface{}) {
 	context.WithValue(j.ctx, key, value)
 }
 
-// GetContext for job
+// GetContext of the job
 func (j *Job) GetContext() *context.Context {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
@@ -676,7 +639,7 @@ func (j *Job) GetContext() *context.Context {
 	return &j.ctx
 }
 
-// GetLogger
+// GetLogger from job context
 func (j *Job) GetLogger() *logrus.Entry {
 	ret := log
 	if j.ctx != nil {

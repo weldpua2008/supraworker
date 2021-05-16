@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/weldpua2008/supraworker/utils"
 	"sync"
 	"time"
 )
@@ -30,12 +31,7 @@ func (r *Registry) Add(rec *Job) bool {
 	if _, ok := r.all[rec.StoreKey()]; ok {
 		return false
 	}
-
 	r.all[rec.StoreKey()] = rec
-	//log.Tracef("Adding Job %s => %p", rec.StoreKey(), rec)
-	//for k, v := range r.all {
-	//	log.Infof("Existig Job [%s] %s => %p", k, v.StoreKey(), v)
-	//}
 
 	return true
 }
@@ -84,11 +80,10 @@ func (r *Registry) Cleanup() (num int) {
 		end := v.StartAt.Add(time.Duration(v.TTR) * time.Millisecond)
 		if (v.TTR > 0) && (now.After(end)) {
 			if err := v.Timeout(); err != nil {
-				log.Debugf("[TIMEOUT] failed cancel job %s %v StartAt %v, %v", v.Id, err, v.StartAt, err)
+				utils.LoggerFromContext(*v.GetContext(), log).Debugf("[TIMEOUT] failed %v, Job started at %v, got %v", err, v.StartAt, err)
 			} else {
-				log.Tracef("[TIMEOUT] successfully canceled job %s StartAt %v, TTR %v", v.Id, v.StartAt, time.Duration(v.TTR)*time.Millisecond)
+				utils.LoggerFromContext(*v.GetContext(), log).Tracef("[TIMEOUT] successfully, Job started at %v, TTR %v", v.StartAt, time.Duration(v.TTR)*time.Millisecond)
 			}
-			log.Tracef("Cleanup Job %s => %v", v.StoreKey(), &v)
 
 			delete(r.all, k)
 			num += 1
