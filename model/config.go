@@ -38,7 +38,6 @@ func chooseHttpMethod(provided string, def string) string {
 func ReinitializeConfig() error {
 	if len(viper.GetString("logs.update.url")) > 0 {
 		StreamingAPIURL = viper.GetString("logs.update.url")
-
 	}
 	StreamingAPIMethod = chooseHttpMethod(viper.GetString("logs.update.method"), http.MethodPost)
 	if len(viper.GetString("jobs.get.url")) > 0 {

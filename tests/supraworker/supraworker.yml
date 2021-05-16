@@ -9,8 +9,8 @@ jobs:
     url: "http://api:8080/api/v1/jobs/fetch_cancel"
     method: post
     params:
-      "jobFlowId": "{{ .ClientId}}"
-      "limit": 5
+      jobFlowId: "{{ .ClientId}}"
+      limit: 5
   logstream:
     url: "http://api:8080/api/v1/logs/run"
     method: POST
