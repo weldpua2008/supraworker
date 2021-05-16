@@ -53,7 +53,6 @@ func NewRestCommunicator() Communicator {
 // NewRestCommunicator prepare struct communicator for HTTP requests
 func NewConfiguredRestCommunicator(section string) (Communicator, error) {
 	comm := NewRestCommunicator()
-	// var cfg_params map[string]interface{}
 	cfgParams := utils.ConvertMapStringToInterface(
 		config.GetStringMapStringTemplated(section, config.CFG_PREFIX_COMMUNICATOR))
 	if _, ok := cfgParams["section"]; !ok {
@@ -77,28 +76,26 @@ func (s *RestCommunicator) Configured() bool {
 	return s.configured
 }
 
-// Configure reads configuration propertoes from global configuration and
+// Configure reads configuration properties from global configuration and
 // from argument.
+// NOTE: There are default headers
 func (s *RestCommunicator) Configure(params map[string]interface{}) error {
-	// log.Warningf("Configure %v", params)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := params["section"]; ok {
-		s.section = params["section"].(string)
+	if val, ok := params["section"]; ok {
+		s.section = fmt.Sprintf("%v", val)
 	}
-	if _, ok := params["param"]; ok {
-		s.param = params["param"].(string)
+	if val, ok := params["param"]; ok {
+		s.param = fmt.Sprintf("%v", val)
 	}
-	// log.Tracef(" s.method %v -> " , s.method)
+	if val, ok := params["method"]; ok {
+		s.method = strings.ToUpper(fmt.Sprintf("%v", val))
+	}
+	if val, ok := params["url"]; ok {
+		s.url = fmt.Sprintf("%v", val)
+	}
 
-	if _, ok := params["method"]; ok {
-		s.method = strings.ToUpper(params["method"].(string))
-	}
-
-	if _, ok := params["url"]; ok {
-		s.url = params["url"].(string)
-	}
 	s.headers = map[string]string{
 		"Content-Type": "application/json",
 		"Accept":       "application/json",

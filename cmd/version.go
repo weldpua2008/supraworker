@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // license that can be found in the LICENSE file.
 
-// Package cmd defines commaqnd tools.
+// Package cmd defines command tools.
 // Version tools for Supraworker
 package cmd
 
