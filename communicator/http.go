@@ -138,7 +138,6 @@ func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interfac
 		try += 1
 		return err
 	}
-	// log.Warningf( "Fetch  %v", params)
 	expBackoff := backoff.NewExponentialBackOff()
 	backoffSection := fmt.Sprintf("%v.%v", s.section, config.CFG_PREFIX_BACKOFF)
 
@@ -171,12 +170,17 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 
 	allowedResponseCodes := config.GetIntSlice(s.section,
 		config.CFG_PREFIX_ALLOWED_RESPONSE_CODES, []int{200, 201, 202})
-	if v := ctx.Value(CTX_ALLOWED_RESPONSE_CODES); v != nil {
+	requestTimeout := 120 * time.Second
+	if v := ctx.Value(CtxAllowedResponseCodes); v != nil {
 		if val, ok := v.([]int); ok {
 			allowedResponseCodes = val
 		}
 	}
-
+	if v := ctx.Value(CtxRequestTimeout); v != nil {
+		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", v)); errParseDuration == nil {
+			requestTimeout = duration
+		}
+	}
 	from := map[string]string{
 		"ClientId":      config.C.ClientId,
 		"ClusterId":     config.C.ClusterId,
@@ -217,7 +221,6 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 	} else {
 		req, err = http.NewRequest(s.method, s.url, nil)
 	}
-	//log.Warningf("s.method %v, s.url %v  allParams %v", s.method, s.url, allParams)
 	if err != nil {
 		return result, fmt.Errorf("%w due %s", ErrFailedSendRequest, err)
 	}
@@ -225,8 +228,7 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 		req.Header.Set(k, v)
 	}
 
-	// client := &http.Client{Timeout: time.Duration(15 * time.Second)}
-	client := globalHttpClient
+	client := &http.Client{Timeout: requestTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w got %s", ErrFailedSendRequest, err)

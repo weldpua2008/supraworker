@@ -189,7 +189,7 @@ func TestExecuteJobCancel(t *testing.T) {
 		defer func() { done <- true }()
 		err := job.Run()
 		if err == nil {
-			t.Fatalf("Expected  error for job %v\n, got %v\n", job, err)
+			t.Errorf("Expected  error for job %v\n, got %v\n", job, err)
 		}
 	}()
 
