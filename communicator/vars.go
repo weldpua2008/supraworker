@@ -20,7 +20,7 @@ var (
 	ErrNotAllowedResponseCode  = errors.New("Not allowed response code")
 
 	// internal
-	log              = logrus.WithFields(logrus.Fields{"package": "communicator"})
+	log = logrus.WithFields(logrus.Fields{"package": "communicator"})
 	//globalHttpClient = &http.Client{Timeout: 120 * time.Second}
 )
 

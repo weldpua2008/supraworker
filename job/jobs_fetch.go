@@ -72,7 +72,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 	}
 	doneNumJobs := make(chan int, 1)
 	doneNumCancelJobs := make(chan int, 1)
-	log.Info(fmt.Sprintf("Starting generate jobs with delay %v", interval))
+	log.Infof("Starting generate jobs with delay %v", interval)
 	tickerCancelJobs := time.NewTicker(10 * time.Second)
 	tickerGenerateJobs := time.NewTicker(interval)
 	defer func() {
@@ -87,7 +87,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 			case <-ctx.Done():
 				close(jobs)
 				doneNumJobs <- j
-				if GracefullShutdown(jobs) {
+				if GracefulShutdown(jobs) {
 					log.Debug("Jobs generation finished [ SUCCESSFULLY ]")
 				} else {
 					log.Warn("Jobs generation finished [ FAILED ]")
@@ -99,9 +99,6 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				// TODO: customize timeout
 				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CtxKeyRequestTimeout, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
 					metrics.FetchNewJobLatency.WithLabelValues("api_get").Observe(float64(time.Since(start).Nanoseconds()))
-					//if len(jobsData) > 128 {
-					//	log.Tracef("Parsing %d new jobs from response", len(jobsData))
-					//}
 					for _, jobResponse := range jobsData {
 						var JobId string
 						var CMD string
@@ -109,7 +106,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						var ExtraRunUID string
 						var TTR uint64
 						var EnvVar []string
-						//metrics.FetchNewJobLatency.WithLabelValues("new_job_response").Observe(float64(time.Since(start).Nanoseconds()))
+						metrics.FetchNewJobLatency.WithLabelValues("new_job_response").Observe(float64(time.Since(start).Nanoseconds()))
 
 						for key, value := range jobResponse {
 
@@ -159,7 +156,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 								ExtraRunUID = fmt.Sprintf("%v", value)
 							}
 						}
-						//metrics.FetchNewJobLatency.WithLabelValues("job_response_enriched").Observe(float64(time.Since(start).Nanoseconds()))
+						metrics.FetchNewJobLatency.WithLabelValues("job_response_enriched").Observe(float64(time.Since(start).Nanoseconds()))
 
 						if len(JobId) < 1 {
 							continue
@@ -283,9 +280,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 	return nil
 }
 
-// GracefullShutdown cancel all running jobs
+// GracefulShutdown cancel all running jobs
 // returns error in case any job failed to cancel
-func GracefullShutdown(jobs <-chan *model.Job) bool {
+func GracefulShutdown(jobs <-chan *model.Job) bool {
 	// empty jobs channel
 	if len(jobs) > 0 {
 		log.Tracef("jobs chan still has size %v, empty it", len(jobs))

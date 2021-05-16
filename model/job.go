@@ -8,6 +8,7 @@ import (
 	"github.com/mitchellh/go-ps"
 	"github.com/sirupsen/logrus"
 	"github.com/weldpua2008/supraworker/config"
+	"github.com/weldpua2008/supraworker/utils"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -240,11 +241,13 @@ func (j *Job) Cancel() error {
 		if errUpdate := j.updateStatus(JOB_STATUS_CANCELED); errUpdate != nil {
 			j.GetLogger().Warningf("failed to change status '%s' -> '%s'", j.Status, JOB_STATUS_CANCELED)
 		}
-		stage := "cancel"
-		params := j.GetParamsWithResend(stage)
-		if err := DoApi(context.Background(), params, stage); err != nil {
-			j.GetLogger().Tracef("[Cancel] call API got %s", err)
-		}
+		j.doApiCall("cancel")
+
+		//stage := "cancel"
+		//params := j.GetParamsWithResend(stage)
+		//if err := DoApi(context.Background(), params, stage); err != nil {
+		//	j.GetLogger().Tracef("[Cancel] call API got %s", err)
+		//}
 	} else if j.Status != JOB_STATUS_CANCELED {
 		j.GetLogger().Tracef("[CANCEL] already in terminal state %s", j.Status)
 	}
@@ -264,11 +267,13 @@ func (j *Job) Failed() (cancelError error) {
 		if errUpdate := j.updateStatus(JOB_STATUS_ERROR); errUpdate != nil {
 			j.GetLogger().Warningf("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, JOB_STATUS_ERROR)
 		}
-		stage := "failed"
-		params := j.GetParamsWithResend(stage)
-		if err := DoApi(context.Background(), params, stage); err != nil {
-			j.GetLogger().Tracef("[Failed] call API got error %s", err)
-		}
+		j.doApiCall("failed")
+
+		//stage := "failed"
+		//params := j.GetParamsWithResend(stage)
+		//if err := DoApi(context.Background(), params, stage); err != nil {
+		//	j.GetLogger().Tracef("[Failed] call API got error %s", err)
+		//}
 	} else if j.Status != JOB_STATUS_ERROR {
 		j.GetLogger().Tracef("[FAILED] already in terminal state %s", j.Status)
 	}
@@ -289,11 +294,13 @@ func (j *Job) Timeout() error {
 			j.GetLogger().Warningf("failed to change status '%s' -> '%s'", j.Status, JOB_STATUS_ERROR)
 		}
 		j.updatelastActivity()
-		stage := "timeout"
-		params := j.GetParamsWithResend(stage)
-		if err := DoApi(context.Background(), params, stage); err != nil {
-			j.GetLogger().Tracef("[DoApi] error %s", err)
-		}
+		j.doApiCall("timeout")
+
+		//stage := "timeout"
+		//params := j.GetParamsWithResend(stage)
+		//if err := DoApi(context.Background(), params, stage); err != nil {
+		//	j.GetLogger().Tracef("[DoApi] error %s", err)
+		//}
 	} else if j.Status != JOB_STATUS_TIMEOUT {
 		j.GetLogger().Tracef("[TIMEOUT] is already in terminal state %s", j.Status)
 	}
@@ -466,11 +473,13 @@ func (j *Job) runcmd() error {
 		j.GetLogger().Tracef("CMD: %s\n", j.cmd)
 	}
 	// update API
-	stage := "run"
-	params := j.GetParamsWithResend(stage)
-	if err := DoApi(context.Background(), params, stage); err != nil {
-		j.GetLogger().Warnf("[%s] %s", j.Id, err)
-	}
+	j.doApiCall("run")
+
+	//stage := "run"
+	//params := j.GetParamsWithResend(stage)
+	//if err := DoApi(context.Background(), params, stage); err != nil {
+	//	j.GetLogger().Warnf("[%s] %s", j.Id, err)
+	//}
 	j.mu.Unlock()
 	if err != nil {
 		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
@@ -599,21 +608,6 @@ func (j *Job) Run() error {
 		j.exitError = err
 	}
 	j.updatelastActivity()
-	//msg := fmt.Sprintf("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
-	//if !IsTerminalStatus(j.Status) {
-	//	finalStatus := JOB_STATUS_ERROR
-	//	if err == nil {
-	//		finalStatus = JOB_STATUS_SUCCESS
-	//	}
-	//
-	//	if errUpdate := j.updateStatus(finalStatus); errUpdate != nil {
-	//		j.GetLogger().Tracef("failed to change job %s status '%s' -> '%s'", j.Id, j.Status, finalStatus)
-	//	}
-	//	msg = fmt.Sprintf("[RUN] Job '%s' is moved to state %s", j.Id, j.Status)
-	//} else {
-	//	msg = fmt.Sprintf("[RUN] Job '%s' is already in terminal state %s", j.Id, j.Status)
-	//}
-	//j.GetLogger().Info(msg)
 	return err
 }
 
@@ -631,13 +625,25 @@ func (j *Job) Finish() error {
 	//if err, result := DoApiCall(j.ctx, params, stage); err != nil {
 	//	log.Tracef("failed to update api, got: %s and %s", result, err)
 	//}
-	stage := "finish"
-	//params := j.GetParams()
-	params := j.GetParamsWithResend(stage)
-	if err := DoApi(context.Background(), params, stage); err != nil {
-		j.GetLogger().Tracef("[%s] %s", j.Id, err)
-	}
+	j.doApiCall("finish")
+	//stage := "finish"
+	//params := j.GetParamsWithResend(stage)
+	//if err := DoApi(context.Background(), params, stage); err != nil {
+	//	j.GetLogger().Tracef("[%s] %s", j.Id, err)
+	//}
 	return nil
+}
+
+func (j *Job) doApiCall(stage string) {
+
+	params := j.GetParamsWithResend(stage)
+	ctx := j.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := DoApi(ctx, params, stage); err != nil {
+		j.GetLogger().Tracef("doApiCall [%s] fails with '%s'", stage, err)
+	}
 }
 
 // SetContext for job
@@ -646,6 +652,17 @@ func (j *Job) SetContext(ctx context.Context) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.ctx = ctx
+}
+
+// AddToContext for job
+// in case there is time limit for example
+func (j *Job) AddToContext(key interface{}, value interface{}) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.ctx == nil {
+		j.ctx = context.Background()
+	}
+	context.WithValue(j.ctx, key, value)
 }
 
 // GetContext for job
@@ -661,11 +678,9 @@ func (j *Job) GetContext() *context.Context {
 
 // GetLogger
 func (j *Job) GetLogger() *logrus.Entry {
-	ret := log.WithField("job_id", j.Id)
+	ret := log
 	if j.ctx != nil {
-		if v := j.ctx.Value("worker"); v != nil {
-			ret = ret.WithField("worker", fmt.Sprintf("%v", v))
-		}
+		ret = utils.LoggerFromContext(j.ctx, ret)
 	}
 
 	return ret
@@ -693,6 +708,7 @@ func NewJob(id string, cmd string) *Job {
 		elements:          100,
 		UseSHELL:          true,
 		RunAs:             "",
+		ctx:               utils.FromJobID(context.Background(), id),
 		StreamInterval:    time.Duration(5) * time.Second,
 	}
 }

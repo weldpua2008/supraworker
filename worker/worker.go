@@ -1,12 +1,12 @@
 package worker
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/weldpua2008/supraworker/job"
 	"github.com/weldpua2008/supraworker/metrics"
 	"github.com/weldpua2008/supraworker/model"
+	"github.com/weldpua2008/supraworker/utils"
 	"sync"
 	"time"
 )
@@ -40,9 +40,10 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	).Inc()
 	for j := range jobs {
 
-		logJob := logWorker.WithField("job_id", j.Id)
-		ctx := context.WithValue(*j.GetContext(), model.CtxKeyRequestWorker, id)
-		j.SetContext(ctx)
+		ctx := j.GetContext()
+		j.SetContext(utils.FromWorkerID(*ctx, fmt.Sprintf("worker-%d", id)))
+		//j.AddToContext(utils.CtxWorkerIdKey, id)
+		logJob := j.GetLogger()
 
 		logJob.Tracef("New Job with TTR %v", time.Duration(j.TTR)*time.Millisecond)
 		metrics.WorkerStatistics.WithLabelValues(

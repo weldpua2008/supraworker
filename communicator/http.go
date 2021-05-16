@@ -130,10 +130,10 @@ func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interfac
 		if err == nil {
 			result = res
 			//if try > 1 {
-			//	log.Tracef("Successfully updated %s [%s] on [%d]", s.url, s.method, try)
+			//	utils.LoggerFromContext(utils.FromRetryID(ctx, try), log).Tracef("Successfully updated %s [%s]", s.url, s.method)
 			//}
 		} else {
-			log.Tracef("Fetch for %s [%s] should retry [%d]", s.url, s.method, try)
+			utils.LoggerFromContext(utils.FromRetryID(ctx, try), log).Tracef("Retrying %s [%s]", s.url, s.method)
 		}
 		try += 1
 		return err
@@ -155,7 +155,7 @@ func (s *RestCommunicator) Fetch(ctx context.Context, params map[string]interfac
 	}
 
 	//var notifyFunc backoff.Notify = func(e error, duration time.Duration) {
-	//	log.Tracef("Retry on... %s", e)
+	//	utils.LoggerFromContext(ctx, log).Tracef("Retry on... %s", e)
 	//}
 	//errRetry := backoff.RetryNotify(operation, expBackoff, notifyFunc)
 	errRetry := backoff.Retry(operation, expBackoff)
@@ -202,7 +202,7 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 		return nil, nil
 	}
 	allParams := config.GetStringMapStringTemplatedFromMap(s.section, s.param, from)
-	//log.Infof("[%s] %v\ns.section %v , %v, \nfrom: %v", s.url, allParams, s.section, s.param,from)
+	//utils.LoggerFromContext(ctx, log).Infof("[%s] %v\ns.section %v , %v, \nfrom: %v", s.url, allParams, s.section, s.param,from)
 
 	for k, v := range params {
 		if v1, ok := v.(string); ok {
@@ -213,7 +213,7 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 	if len(allParams) > 0 {
 		jsonStr, err = json.Marshal(&allParams)
 		if err != nil {
-			log.Tracef("\nFailed to marshal request %s  to %s \nwith %s\n", s.method, s.url, jsonStr)
+			utils.LoggerFromContext(ctx, log).Tracef("\nFailed to marshal request %s  to %s \nwith %s\n", s.method, s.url, jsonStr)
 			return nil, fmt.Errorf("%w due %s", ErrFailedMarshalRequest, err)
 		}
 
