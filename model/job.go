@@ -446,9 +446,9 @@ func (j *Job) runcmd() error {
 	}
 
 	if err != nil && j.cmd.Process != nil {
-		j.GetLogger().Tracef("CMD: %s [%d]\n", j.cmd, j.cmd.Process.Pid)
+		j.GetLogger().Tracef("Start CMD: %s [%d] TTR %v\n", j.cmd, j.cmd.Process.Pid, j.TTR)
 	} else {
-		j.GetLogger().Tracef("CMD: %s\n", j.cmd)
+		j.GetLogger().Tracef("Start CMD: %s TTR %v\n", j.cmd, j.TTR)
 	}
 	// update API
 	j.doApiCall("run")
