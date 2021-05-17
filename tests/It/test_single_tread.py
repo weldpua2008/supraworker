@@ -4,7 +4,7 @@ import time
 import functools
 import inspect
 
-NUM_WORKERS = 40  # Number of supersonic workers
+NUM_WORKERS = 10  # Number of supersonic workers
 
 
 def num_jobs(number):

@@ -82,7 +82,6 @@ class NewJobList(Resource):
         parser.add_argument('limit', required=False, type=int, default=1,
                             help="Limit results")
         args = parser.parse_args()
-        # limit = max(int(args['limit']), 1)
         status_code = 500
         ret = []
         if isinstance(args.get('jobflowid', ''), str) and args.get('jobflowid', ''):
@@ -98,14 +97,10 @@ class NewJobList(Resource):
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat(),
                 })
-            # time.sleep(randint(1, 3))
             for elem in ret:
                 query(
                     f"UPDATE jobs SET status='propogated' WHERE id={elem['job_id']} AND status IN ('PENDING')")
 
-            # if len(query("SELECT * from jobs WHERE status in ('pending', 'PENDING')")) < 1:
-            #     for i in range(0, (len(ret) + 50100)):
-            #         query(f"INSERT INTO jobs (ttr, cmd) VALUES({randint(1, 5000)},'sleep {randint(1, 5000)/1000}');")
             if ret:
                 logger.info(f"New {len(ret)} jobs")
             status_code = 200
@@ -160,8 +155,6 @@ class CancelJob(Resource):
                     'jobFlowId': args['jobFlowId'],
                     'created_at': row['created_at'].isoformat()
                 })
-            # if ret:
-            # time.sleep(randint(1, 3))
             if ret:
                 logger.info(f"Cancel {len(ret)} jobs")
 
@@ -243,7 +236,6 @@ class RunJob(Resource):
                 }
                 # logger.info(f" update job {job_id} with {_ret}")
         except Exception as e:
-            # ret = "Error"
             status_code = 500
             error_type = type(e).__name__
             ret = f"{error_type} = {status_code}"
