@@ -7,6 +7,7 @@ import inspect
 NUM_WORKERS = 40  # Number of supersonic workers
 AUTO_INCREMENT = 0
 
+
 def num_jobs(number):
     def actual_decorator(func):
         @functools.wraps(func)
@@ -52,7 +53,7 @@ class TestIt(unittest.TestCase):
     def tearDown(self) -> None:
         utils.query(
             f"UPDATE jobs SET status='{self.cancelled_state}' WHERE status not IN ('{self.cancelled_state}') ")
-        # time.sleep(5)
+        time.sleep(2)
 
     def add_x_jobs(self, num: int = 10, cmd: str = 'exit 0', ttr: str = '10000') -> list:
         for i in range(num):
