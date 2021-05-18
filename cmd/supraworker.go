@@ -115,7 +115,7 @@ var rootCmd = &cobra.Command{
 		prometheusAddr := config.GetStringTemplatedDefault("prometheus.listen", ":8080")
 		prometheusUri := config.GetStringTemplatedDefault("prometheus.uri", "/metrics")
 		metrics.AddPrometheusMetricsHandler(prometheusAddr, prometheusUri)
-		if pprofFlag || traceFlag {
+		if pprofFlag {
 			pprofAddr := config.GetStringTemplatedDefault("pprof.listen", ":8080")
 			pprofUri := config.GetStringTemplatedDefault("pprof.uri", "/debug/pprof")
 			metrics.AddPProf(pprofAddr, pprofUri)
