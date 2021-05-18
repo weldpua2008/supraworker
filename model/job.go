@@ -510,8 +510,6 @@ func (j *Job) runcmd() error {
 	// no problems copying stdin, stdout, and stderr,
 	// and exits with a zero exit status.
 	err = j.cmd.Wait()
-	j.mu.Lock()
-	defer j.mu.Unlock()
 	if err != nil {
 		status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
 		signaled := status.Signaled()
@@ -525,6 +523,8 @@ func (j *Job) runcmd() error {
 	}
 	// signal that we've read all logs
 	j.notifyStopStreams <- struct{}{}
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	status := j.cmd.ProcessState.Sys()
 	ws, ok := status.(syscall.WaitStatus)
 	if !ok {
@@ -533,7 +533,6 @@ func (j *Job) runcmd() error {
 	}
 	exitCode := ws.ExitStatus()
 	j.ExitCode = exitCode
-
 	j.alreadyStopped = true
 
 	switch {

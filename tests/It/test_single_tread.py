@@ -4,7 +4,7 @@ import time
 import functools
 import inspect
 
-NUM_WORKERS = 10  # Number of supersonic workers
+NUM_WORKERS = 40  # Number of supersonic workers
 AUTO_INCREMENT = 0
 
 def num_jobs(number):
@@ -52,7 +52,7 @@ class TestIt(unittest.TestCase):
     def tearDown(self) -> None:
         utils.query(
             f"UPDATE jobs SET status='{self.cancelled_state}' WHERE status not IN ('{self.cancelled_state}') ")
-        time.sleep(5)
+        # time.sleep(5)
 
     def add_x_jobs(self, num: int = 10, cmd: str = 'exit 0', ttr: str = '10000') -> list:
         for i in range(num):
@@ -78,8 +78,8 @@ class TestIt(unittest.TestCase):
     def add_jobs_and_wait_statuses(self, status: str, num: int, cmd: str, ttr: str) -> list:
         print()
         global AUTO_INCREMENT
-        AUTO_INCREMENT = AUTO_INCREMENT + num
-        print(f"Adding {num} ->{AUTO_INCREMENT} jobs for {inspect.stack()[1][3]}")
+        AUTO_INCREMENT = AUTO_INCREMENT + num + 1
+        print(f"Adding {num} jobs for {inspect.stack()[1][3]}")
         actual = self.add_x_jobs(num=num, cmd=cmd, ttr=ttr)
 
         wait_all_jobs(status=status)
