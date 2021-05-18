@@ -101,10 +101,11 @@ func choseClientId() {
 	case len(ClientId) > 0:
 		C.ClientId = ClientId
 	case len(C.ClientId) > 0:
-		log.Tracef("Leaving  C.ClientId %s", C.ClientId)
 	default:
 		C.ClientId = "supraworker"
 	}
+	log.Tracef("Using ClientId %s", C.ClientId)
+
 }
 
 func updateNumWorkers() {
@@ -112,10 +113,10 @@ func updateNumWorkers() {
 	case NumWorkers > 0:
 		C.NumWorkers = NumWorkers
 	case C.NumWorkers > 0:
-		log.Tracef("Leaving C.NumWorkers %d", C.NumWorkers)
 	default:
 		C.NumWorkers = DefaultNumWorkers
 	}
+	log.Tracef("Using NumWorkers %d", C.NumWorkers)
 }
 
 // ReinitializeConfig on load or file change

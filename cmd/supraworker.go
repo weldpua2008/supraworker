@@ -103,7 +103,7 @@ var rootCmd = &cobra.Command{
 		viper.OnConfigChange(func(e fsnotify.Event) {
 			log.Trace("Config file changed:", e.Name)
 			if errCnf := model.ReinitializeConfig(); errCnf != nil {
-				log.Tracef("Failed model.ReinitializeConfig %v\n", errCnf)
+				log.Tracef("Failed ReinitializeConfig %v\n", errCnf)
 			}
 			config.ReinitializeConfig()
 		})
@@ -141,19 +141,11 @@ var rootCmd = &cobra.Command{
 		heartbeatSection := "heartbeat"
 		if config.GetBool(fmt.Sprintf("%v.enable", heartbeatSection)) {
 			heartbeatApiCallDelay := config.GetTimeDurationDefault(heartbeatSection, "interval", apiCallDelay)
-			// if epsagonTraceFlag {
-			// 	go func() {
-			// 		if err := epsagon.ConcurrentGoWrapper(epsagonConfig, heartbeat.StartHeartBeat)(heartbeat_section, heartbeatApiCallDelaySeconds); err != nil {
-			// 			log.Tracef("StartHeartBeat returned error %v", err)
-			// 		}
-			// 	}()
-			// } else {
 			go func() {
 				if err := heartbeat.StartHeartBeat(ctx, heartbeatSection, heartbeatApiCallDelay); err != nil {
 					log.Tracef("StartHeartBeat returned error %v", err)
 				}
 			}()
-			// }
 
 		}
 
