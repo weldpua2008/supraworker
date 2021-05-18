@@ -5,14 +5,16 @@ import functools
 import inspect
 
 NUM_WORKERS = 10  # Number of supersonic workers
-
+AUTO_INCREMENT = 0
 
 def num_jobs(number):
     def actual_decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, number, **kwargs)
+
         return wrapper
+
     return actual_decorator
 
 
@@ -37,7 +39,7 @@ def wait_all_jobs(status: str) -> None:
         wait_single_job_status(job_id=row['id'], status=status)
 
 
-class TestSum(unittest.TestCase):
+class TestIt(unittest.TestCase):
     propagated_state = 'propagated'
     promotion_state = 'test'
     pending_state = 'PENDING'
@@ -45,7 +47,7 @@ class TestSum(unittest.TestCase):
     cancelled_state = 'cancel'
 
     def setUp(self) -> None:
-        utils.truncate()
+        utils.truncate(initial_number=AUTO_INCREMENT)
 
     def tearDown(self) -> None:
         utils.query(
@@ -75,8 +77,11 @@ class TestSum(unittest.TestCase):
 
     def add_jobs_and_wait_statuses(self, status: str, num: int, cmd: str, ttr: str) -> list:
         print()
-        print(f"Adding {num} jobs for {inspect.stack()[1][3]}")
+        global AUTO_INCREMENT
+        AUTO_INCREMENT = AUTO_INCREMENT + num
+        print(f"Adding {num} ->{AUTO_INCREMENT} jobs for {inspect.stack()[1][3]}")
         actual = self.add_x_jobs(num=num, cmd=cmd, ttr=ttr)
+
         wait_all_jobs(status=status)
 
         return actual

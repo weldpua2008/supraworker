@@ -64,8 +64,8 @@ def query(sql, params=()):
     return response
 
 
-def truncate():
+def truncate(initial_number: int):
     query(f"TRUNCATE TABLE {config.config.get('MYSQL_DATABASE_TABLE')}")
     logging.info("Truncating table")
-    query(f"ALTER TABLE {config.config.get('MYSQL_DATABASE_TABLE')}  AUTO_INCREMENT=0")
-    logging.info("Reseting autoincrement")
+    query(f"ALTER TABLE {config.config.get('MYSQL_DATABASE_TABLE')}  AUTO_INCREMENT={initial_number}")
+    logging.warning(f"Resetting autoincrement -> {initial_number}")
