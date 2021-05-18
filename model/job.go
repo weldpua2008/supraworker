@@ -510,6 +510,8 @@ func (j *Job) runcmd() error {
 	// no problems copying stdin, stdout, and stderr,
 	// and exits with a zero exit status.
 	err = j.cmd.Wait()
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	if err != nil {
 		status := j.cmd.ProcessState.Sys().(syscall.WaitStatus)
 		signaled := status.Signaled()
@@ -531,13 +533,14 @@ func (j *Job) runcmd() error {
 	}
 	exitCode := ws.ExitStatus()
 	j.ExitCode = exitCode
-	j.mu.Lock()
-	defer j.mu.Unlock()
+
 	j.alreadyStopped = true
 
 	switch {
 	case j.Status == JOB_STATUS_CANCELED:
 		err = ErrJobCancelled
+	case j.Status == JOB_STATUS_TIMEOUT:
+		err = ErrJobTimeout
 	case ctx != nil && ctx.Err() == context.DeadlineExceeded:
 		err = ErrJobTimeout
 	case exitCode < 0:

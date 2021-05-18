@@ -43,6 +43,7 @@ type Jobber interface {
 	Run() error
 	Cancel() error
 	Finish() error
+	Timeout() error
 }
 
 const (

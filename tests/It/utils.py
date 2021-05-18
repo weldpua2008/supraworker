@@ -1,4 +1,4 @@
-from typing import Iterator, Iterable, Collection
+from typing import Iterator, Collection
 
 import mysql.connector
 import config
@@ -69,6 +69,3 @@ def truncate():
     logging.info("Truncating table")
     query(f"ALTER TABLE {config.config.get('MYSQL_DATABASE_TABLE')}  AUTO_INCREMENT=0")
     logging.info("Reseting autoincrement")
-
-    # query(
-    #     f"UPDATE jobs SET status='propogated' WHERE id={elem['job_uid']} AND status IN ( 'pending','PENDING')")
