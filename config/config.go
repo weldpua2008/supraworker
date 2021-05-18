@@ -21,6 +21,8 @@ import (
 const (
 	// ProjectName defines project name
 	ProjectName = "supraworker"
+	// Default number of workers
+	DefaultNumWorkers = 5
 )
 
 // Config is top level Configuration structure
@@ -72,10 +74,12 @@ type UrlConf struct {
 }
 
 var (
-	// CfgFile defines Path to the config
+	// CfgFile defines Path to the config.
 	CfgFile string
 	// ClientId defines Identification for the instance.
 	ClientId string
+	// NumWorkers parallel threads for processing jobs.
+	NumWorkers int
 	// C defines main configuration structure.
 	C Config = Config{
 		CallAPIDelaySec: int(2),
@@ -92,13 +96,33 @@ func init() {
 
 }
 
-// ReinitializeConfig on load or file change
-func ReinitializeConfig() {
-	if len(ClientId) > 0 {
+func choseClientId() {
+	switch {
+	case len(ClientId) > 0:
 		C.ClientId = ClientId
-	} else {
+	case len(C.ClientId) > 0:
+		log.Tracef("Leaving  C.ClientId %s", C.ClientId)
+	default:
 		C.ClientId = "supraworker"
 	}
+}
+
+func updateNumWorkers() {
+	switch {
+	case NumWorkers > 0:
+		C.NumWorkers = NumWorkers
+	case C.NumWorkers > 0:
+		log.Tracef("Leaving C.NumWorkers %d", C.NumWorkers)
+	default:
+		C.NumWorkers = DefaultNumWorkers
+	}
+}
+
+// ReinitializeConfig on load or file change
+func ReinitializeConfig() {
+	choseClientId()
+	updateNumWorkers()
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -137,15 +161,15 @@ func initConfig() {
 	viper.AutomaticEnv()
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		logrus.Fatal("Can't read config:", err)
+		logrus.Fatalf("Can't read config: %s", err)
 	}
 	err := viper.Unmarshal(&C)
 	if err != nil {
-		logrus.Fatal(fmt.Sprintf("unable to decode into struct, %v", err))
-
+		logrus.Fatalf("unable to decode into struct, %v", err)
 	}
 	log.Debug(viper.ConfigFileUsed())
-
+	choseClientId()
+	updateNumWorkers()
 }
 
 func GetStringTemplatedDefault(section string, def string) string {

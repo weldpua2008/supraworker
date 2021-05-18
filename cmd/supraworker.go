@@ -31,29 +31,22 @@ var (
 	verbose   bool
 	traceFlag bool
 	pprofFlag bool
-	// epsagonTraceFlag bool
-	log            = logrus.WithFields(logrus.Fields{"package": "cmd"})
-	numWorkers int = 0
-
+	log       = logrus.WithFields(logrus.Fields{"package": "cmd"})
 	// maxRequestTimeout is timeout for the cancellation and fetch requests.
 	// it's high in order to fetch a huge jsons or when the network is slow.
 	maxRequestTimeout = 600 * time.Second
 )
-
-const defaultNumWorkers = 5
 
 func init() {
 
 	// Define Persistent Flags and configuration settings, which, if defined here,
 	// will be global for application.
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
-	// rootCmd.PersistentFlags().BoolVarP(&epsagonTraceFlag, "epsagon", "e", false, "Enable Epsagon Tracing")
-
 	rootCmd.PersistentFlags().BoolVarP(&traceFlag, "trace", "t", false, "trace")
 	rootCmd.PersistentFlags().BoolVarP(&pprofFlag, "pprof", "p", false, "pprof")
 	rootCmd.PersistentFlags().StringVar(&config.ClientId, "clientId", "", "ClientId (default is supraworker)")
 
-	rootCmd.PersistentFlags().IntVarP(&numWorkers, "workers", "w", 5, "Number of workers")
+	rootCmd.PersistentFlags().IntVarP(&config.NumWorkers, "workers", "w", 5, "Number of workers")
 	// local flags, which will only run
 	// when this action is called directly.
 
@@ -114,12 +107,6 @@ var rootCmd = &cobra.Command{
 			}
 			config.ReinitializeConfig()
 		})
-		// var epsagonConfig *epsagon.Config
-		// if epsagonTraceFlag {
-		// 	epsagonConfig = epsagon.NewTracerConfig(fmt.Sprintf("supraworker-%v", config.C.ClientId), config.GetStringDefault("epsagon_token", ""))
-		// 	epsagonConfig.Debug = true
-		// 	communicator.SetEpsagonHttpWrapper()
-		// }
 
 		healthCheckAddr := config.GetStringTemplatedDefault("healthcheck.listen", ":8080")
 		healthCheckUri := config.GetStringTemplatedDefault("healthcheck.uri", "/health/is_alive")
@@ -139,23 +126,16 @@ var rootCmd = &cobra.Command{
 		metrics.StartAll()
 		defer metrics.StopAll(ctx)
 
-		if config.C.NumWorkers > 0 {
-			numWorkers = config.C.NumWorkers
-		}
-		if numWorkers < 1 {
-			numWorkers = defaultNumWorkers
-		}
-		jobs := make(chan *model.Job, numWorkers)
+		jobs := make(chan *model.Job, config.C.NumWorkers)
 
 		go func() {
 			if err := job.StartGenerateJobs(ctx, jobs, apiCallDelay, maxRequestTimeout); err != nil {
 				log.Tracef("StartGenerateJobs returned error %v", err)
 			}
 		}()
-		config.C.NumWorkers = 0
-		for w := 1; w <= numWorkers; w++ {
+
+		for w := 1; w <= config.C.NumWorkers; w++ {
 			wg.Add(1)
-			config.C.NumWorkers += 1
 			go worker.StartWorker(w, jobs, &wg)
 		}
 		heartbeatSection := "heartbeat"
