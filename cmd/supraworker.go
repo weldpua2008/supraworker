@@ -31,7 +31,7 @@ var (
 	verbose   bool
 	traceFlag bool
 	pprofFlag bool
-	promFlag = true
+	promFlag  = true
 	log       = logrus.WithFields(logrus.Fields{"package": "cmd"})
 	// maxRequestTimeout is timeout for the cancellation and fetch requests.
 	// it's high in order to fetch a huge jsons or when the network is slow.
