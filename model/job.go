@@ -430,6 +430,7 @@ func (j *Job) runcmd() error {
 	j.mu.Lock()
 	j.StartAt = time.Now()
 	j.updatelastActivity()
+
 	ctx, cancel := prepareContext(j.ctx, j.TTR)
 	defer cancel()
 
@@ -477,6 +478,8 @@ func (j *Job) runcmd() error {
 	j.doApiCall("run")
 	j.mu.Unlock()
 	if err != nil {
+		j.GetLogger().Tracef("Exiting...cmd.Start has error %s", err)
+
 		_ = j.AppendLogStream([]string{fmt.Sprintf("cmd.Start %s\n", err)})
 		return fmt.Errorf("cmd.Start, %s", err)
 	}
@@ -532,8 +535,10 @@ func (j *Job) runcmd() error {
 	// The returned error is nil if the command runs, has
 	// no problems copying stdin, stdout, and stderr,
 	// and exits with a zero exit status.
+
 	err = j.cmd.Wait()
 	// signal that we've read all logs
+
 	j.notifyStopStreams <- struct{}{}
 	j.mu.Unlock()
 	if err != nil {
@@ -552,6 +557,7 @@ func (j *Job) runcmd() error {
 	defer j.mu.Unlock()
 	status := j.cmd.ProcessState.Sys()
 	ws, ok := status.(syscall.WaitStatus)
+
 	if !ok {
 		err = fmt.Errorf("%w got %T", ErrorJobNotInWaitStatus, status)
 		j.exitError = err
@@ -587,7 +593,6 @@ func (j *Job) runcmd() error {
 		}
 	}
 	j.exitError = err
-
 	return err
 }
 

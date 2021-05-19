@@ -3,7 +3,6 @@ package model
 import (
 	"bytes"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/weldpua2008/supraworker/config"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
@@ -196,11 +195,11 @@ func TestExecuteJobCancel(t *testing.T) {
 	}()
 
 	go func() {
-		// waiting for a status
-		defer func() { started <- true }()
-		for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
+		// waiting for a status propagation
+		for job.GetStatus() == JOB_STATUS_PENDING {
 			time.Sleep(10 * time.Millisecond)
 		}
+		started <- true
 	}()
 	select {
 	case <-started:
@@ -419,8 +418,7 @@ func TestJobCancelledRandomDelay(t *testing.T) {
   ClientId: "Test"
   version: "1.0"
   `)
-	logrus.SetLevel(logrus.TraceLevel)
-
+	//logrus.SetLevel(logrus.TraceLevel)
 	C, tmpC := config.StringToCfgForTests(t, yamlString)
 	config.C = C
 	defer func() {
@@ -428,8 +426,7 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 	}()
 	for i := 1; i <= 10; i++ {
 		job := NewJob(fmt.Sprintf("Job-%d", i), "sleep 10000")
-		//t.Logf("NewJob %d", i)
-		job.TTR = uint64((100 * time.Millisecond).Milliseconds())
+		job.TTR = uint64((1 * time.Millisecond).Milliseconds())
 		chanDone := make(chan bool)
 		startedChan := make(chan bool)
 		go func() {
@@ -439,14 +436,14 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 
 		go func() {
 			// waiting for a status
-			defer func() { startedChan <- true }()
-			for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
+			for job.GetStatus() == JOB_STATUS_PENDING {
 				time.Sleep(10 * time.Millisecond)
 			}
+			startedChan <- true
 		}()
 		select {
 		case <-startedChan:
-		case <-time.After(10 * time.Second):
+		case <-time.After(6 * time.Second):
 			t.Logf("runtime.NumGoroutine: %v", runtime.NumGoroutine())
 			buf := make([]byte, 1<<16)
 			runtime.Stack(buf, true)
@@ -454,7 +451,6 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 			t.Fatalf("timed out")
 		}
 		close(startedChan)
-
 		time.Sleep(time.Duration(i*10) * time.Millisecond)
 		_ = job.Cancel()
 		<-chanDone
