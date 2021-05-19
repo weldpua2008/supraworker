@@ -263,20 +263,22 @@ func (j *Job) Failed() error {
 	return nil
 	//return j.stopProcess()
 }
+
 // HitTimeout returns true if job hit timeout
 func (j *Job) HitTimeout() bool {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
-	if j.TTR <  1 {
+	if j.TTR < 1 {
 		return false
 	}
 	now := time.Now()
 	end := j.StartAt.Add(time.Duration(j.TTR) * time.Millisecond)
-	if  now.After(end) {
+	if now.After(end) {
 		return true
 	}
 	return false
 }
+
 // Timeout job flow
 // update your API
 func (j *Job) Timeout() error {
