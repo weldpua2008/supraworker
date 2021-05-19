@@ -39,38 +39,9 @@ type Config struct {
 
 	// delay between API calls to prevent Denial-of-service
 	CallAPIDelaySec int `mapstructure:"api_delay_sec"`
-	// represent API for Jobs
-	//JobsAPI ApiOperations `mapstructure:"jobs"`
-	// LogsAPI         ApiOperations `mapstructure:"logs"`
-	//HeartBeat ApiOperations `mapstructure:"heartbeat"`
 	// Config version
 	ConfigVersion string `mapstructure:"version"`
 }
-
-//// ApiOperations is defines operations structure
-//type ApiOperations struct {
-//	//Run          UrlConf `mapstructure:"run"`         // defines how to run item
-//	//Cancellation UrlConf `mapstructure:"cancelation"` // defines how to cancel item
-//	//LogStreams UrlConf `mapstructure:"logstream"` // defines how to get item
-//
-//	//Get    UrlConf `mapstructure:"get"`    // defines how to get item
-//	//Lock   UrlConf `mapstructure:"lock"`   // defines how to lock item
-//	//Update UrlConf `mapstructure:"update"` // defines how to update item
-//	//Unlock UrlConf `mapstructure:"unlock"` // defines how to unlock item
-//	//Finish UrlConf `mapstructure:"finish"` // defines how to finish item
-//	//Failed UrlConf `mapstructure:"failed"` // defines how to update on failed
-//	//Cancel UrlConf `mapstructure:"cancel"` // defines how to update on cancel
-//
-//}
-
-// UrlConf defines all params for request.
-//type UrlConf struct {
-//	Url             string            `mapstructure:"url"`
-//	Method          string            `mapstructure:"method"`
-//	Headers         map[string]string `mapstructure:"headers"`
-//	PreservedFields map[string]string `mapstructure:"preservedfields"`
-//	Params          map[string]string `mapstructure:"params"`
-//}
 
 var (
 	// CfgFile defines Path to the config.
@@ -80,7 +51,7 @@ var (
 	// NumWorkers parallel threads for processing jobs.
 	NumWorkers int
 	// C defines main configuration structure.
-	C Config = Config{
+	C = Config{
 		CallAPIDelaySec: int(2),
 		NumActiveJobs:   0,
 		NumFreeSlots:    0,
@@ -92,7 +63,6 @@ var (
 // Init configuration
 func init() {
 	cobra.OnInitialize(initConfig)
-
 }
 
 func choseClientId() {
@@ -104,7 +74,6 @@ func choseClientId() {
 		C.ClientId = "supraworker"
 	}
 	log.Tracef("Using ClientId %s", C.ClientId)
-
 }
 
 func updateNumWorkers() {
@@ -122,7 +91,6 @@ func updateNumWorkers() {
 func ReinitializeConfig() {
 	choseClientId()
 	updateNumWorkers()
-
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -148,7 +116,6 @@ func initConfig() {
 			viper.AddConfigPath(fmt.Sprintf("$HOME/.%s/", lProjectName))
 			viper.AddConfigPath("/etc/")
 			viper.AddConfigPath(fmt.Sprintf("/etc/%s/", lProjectName))
-
 		}
 
 		if conf := os.Getenv(fmt.Sprintf("%s_CFG", strings.ToUpper(ProjectName))); conf != "" {
@@ -186,7 +153,6 @@ func GetStringTemplatedDefault(section string, def string) string {
 			return def
 		}
 		return tplBytes.String()
-
 	}
 	return def
 }
@@ -199,7 +165,6 @@ func GetMapStringMapStringTemplatedDefault(section string, param string, def map
 		if sectionValue == nil {
 			continue
 		}
-		// log.Infof("%s.%s => %v",  section, param,k1)
 		if params, ok := sectionValue.(map[string]interface{}); ok {
 			c := make(map[string]string)
 			for k, v := range def {
@@ -221,7 +186,6 @@ func GetMapStringMapStringTemplatedDefault(section string, param string, def map
 			}
 			ret[fmt.Sprintf("%s.%s.%s", section, param, subsection)] = c
 		}
-
 	}
 	return ret
 }
