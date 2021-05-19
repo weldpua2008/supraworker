@@ -72,12 +72,10 @@ func (r *Registry) Delete(id string) bool {
 // TODO: Consider new timeout status & flow
 //  - Add batch
 func (r *Registry) Cleanup() (num int) {
-	now := time.Now()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for k, v := range r.all {
-		end := v.StartAt.Add(time.Duration(v.TTR) * time.Millisecond)
-		if (v.TTR > 0) && (now.After(end)) {
+		if v.HitTimeout() {
 			if err := v.Timeout(); err != nil {
 				utils.LoggerFromContext(*v.GetContext(), log).Debugf("[TIMEOUT] failed %v, Job started at %v, got %v", err, v.StartAt, err)
 			} else {

@@ -3,12 +3,14 @@ package model
 import (
 	"bytes"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/weldpua2008/supraworker/config"
 	"github.com/weldpua2008/supraworker/model/cmdtest"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -417,14 +419,16 @@ func TestJobCancelledRandomDelay(t *testing.T) {
   ClientId: "Test"
   version: "1.0"
   `)
+	logrus.SetLevel(logrus.TraceLevel)
 
 	C, tmpC := config.StringToCfgForTests(t, yamlString)
 	config.C = C
 	defer func() {
 		config.C = tmpC
 	}()
-	for i := 1; i <= 10; i++ {
+	for i := 1; i <= 1000; i++ {
 		job := NewJob("echo", "sleep 10000")
+		//t.Logf("NewJob %d", i)
 		job.TTR = uint64((100 * time.Millisecond).Milliseconds())
 		chanDone := make(chan bool)
 		startedChan := make(chan bool)
@@ -444,7 +448,11 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 		}()
 		select {
 		case <-startedChan:
-		case <-time.After(10 * time.Second):
+		case <-time.After(1 * time.Minute):
+			t.Logf("runtime.NumGoroutine: %v", runtime.NumGoroutine())
+			buf := make([]byte, 1<<16)
+			runtime.Stack(buf, true)
+			t.Logf("%s", buf)
 			t.Fatalf("timed out")
 		}
 

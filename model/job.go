@@ -245,7 +245,7 @@ func (j *Job) Cancel() error {
 
 // Failed job flow
 // update your API
-func (j *Job) Failed() (cancelError error) {
+func (j *Job) Failed() error {
 	j.mu.Lock()
 	defer func() {
 		j.updatelastActivity()
@@ -260,9 +260,23 @@ func (j *Job) Failed() (cancelError error) {
 	} else if j.Status != JOB_STATUS_ERROR {
 		j.GetLogger().Tracef("[FAILED] already in terminal state %s", j.Status)
 	}
-	return j.stopProcess()
+	return nil
+	//return j.stopProcess()
 }
-
+// HitTimeout returns true if job hit timeout
+func (j *Job) HitTimeout() bool {
+	j.mu.RLock()
+	defer j.mu.RUnlock()
+	if j.TTR <  1 {
+		return false
+	}
+	now := time.Now()
+	end := j.StartAt.Add(time.Duration(j.TTR) * time.Millisecond)
+	if  now.After(end) {
+		return true
+	}
+	return false
+}
 // Timeout job flow
 // update your API
 func (j *Job) Timeout() error {
@@ -293,7 +307,14 @@ func (j *Job) Timeout() error {
 //	- after slow log interval
 func (j *Job) AppendLogStream(logStream []string) (err error) {
 	if j.quotaHit() {
-		<-j.notify
+		//<-j.notify
+		select {
+		case <-j.notify:
+		case <-time.After(120 * time.Second):
+			j.GetLogger().Warningf("Timeout AppendLogStream")
+
+		}
+
 		err = j.doSendSteamBuf()
 	}
 	j.incrementCounter()
