@@ -114,7 +114,7 @@ var rootCmd = &cobra.Command{
 		healthCheckAddr := config.GetStringTemplatedDefault("healthcheck.listen", ":8080")
 		healthCheckUri := config.GetStringTemplatedDefault("healthcheck.uri", "/health/is_alive")
 		metrics.StartHealthCheck(healthCheckAddr, healthCheckUri)
-		if promFlag {
+		if promFlag || config.GetBool("prometheus.enable") {
 			prometheusAddr := config.GetStringTemplatedDefault("prometheus.listen", ":8080")
 			prometheusUri := config.GetStringTemplatedDefault("prometheus.uri", "/metrics")
 			metrics.AddPrometheusMetricsHandler(prometheusAddr, prometheusUri)
