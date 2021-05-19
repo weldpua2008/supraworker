@@ -33,8 +33,8 @@ type Config struct {
 	NumFreeSlots  int    // Number of free jobs slots
 	NumWorkers    int    `mapstructure:"workers"`
 
-	ClusterId   string
-	ClusterPool string
+	ClusterId   string `mapstructure:"clusterId"`
+	ClusterPool string `mapstructure:"clusterPool"`
 	URL         string // Used for overload URL for Tests "{{.URL}}"
 
 	// delay between API calls to prevent Denial-of-service
@@ -49,18 +49,17 @@ type Config struct {
 
 // ApiOperations is defines operations structure
 type ApiOperations struct {
-	Run         UrlConf `mapstructure:"run"`         // defines how to run item
-	Cancelation UrlConf `mapstructure:"cancelation"` // defines how to cancel item
+	//Run          UrlConf `mapstructure:"run"`         // defines how to run item
+	//Cancellation UrlConf `mapstructure:"cancelation"` // defines how to cancel item
+	//LogStreams UrlConf `mapstructure:"logstream"` // defines how to get item
 
-	LogStreams UrlConf `mapstructure:"logstream"` // defines how to get item
-
-	Get    UrlConf `mapstructure:"get"`    // defines how to get item
-	Lock   UrlConf `mapstructure:"lock"`   // defines how to lock item
-	Update UrlConf `mapstructure:"update"` // defines how to update item
-	Unlock UrlConf `mapstructure:"unlock"` // defines how to unlock item
-	Finish UrlConf `mapstructure:"finish"` // defines how to finish item
-	Failed UrlConf `mapstructure:"failed"` // defines how to update on failed
-	Cancel UrlConf `mapstructure:"cancel"` // defines how to update on cancel
+	//Get    UrlConf `mapstructure:"get"`    // defines how to get item
+	//Lock   UrlConf `mapstructure:"lock"`   // defines how to lock item
+	//Update UrlConf `mapstructure:"update"` // defines how to update item
+	//Unlock UrlConf `mapstructure:"unlock"` // defines how to unlock item
+	//Finish UrlConf `mapstructure:"finish"` // defines how to finish item
+	//Failed UrlConf `mapstructure:"failed"` // defines how to update on failed
+	//Cancel UrlConf `mapstructure:"cancel"` // defines how to update on cancel
 
 }
 
