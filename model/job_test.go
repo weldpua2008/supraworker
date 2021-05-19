@@ -426,7 +426,7 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 	defer func() {
 		config.C = tmpC
 	}()
-	for i := 1; i <= 1000; i++ {
+	for i := 1; i <= 10; i++ {
 		job := NewJob(fmt.Sprintf("Job-%d", i), "sleep 10000")
 		//t.Logf("NewJob %d", i)
 		job.TTR = uint64((100 * time.Millisecond).Milliseconds())
@@ -440,11 +440,9 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 		go func() {
 			// waiting for a status
 			defer func() { startedChan <- true }()
-			//time.Sleep(100 * time.Millisecond)
 			for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
 				time.Sleep(10 * time.Millisecond)
 			}
-			//time.Sleep(10 * time.Millisecond)
 		}()
 		select {
 		case <-startedChan:
