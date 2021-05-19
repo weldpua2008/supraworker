@@ -427,7 +427,7 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 		config.C = tmpC
 	}()
 	for i := 1; i <= 1000; i++ {
-		job := NewJob(fmt.Sprintf("Job-%d",i), "sleep 10000")
+		job := NewJob(fmt.Sprintf("Job-%d", i), "sleep 10000")
 		//t.Logf("NewJob %d", i)
 		job.TTR = uint64((100 * time.Millisecond).Milliseconds())
 		chanDone := make(chan bool)
