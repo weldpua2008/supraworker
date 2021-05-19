@@ -103,7 +103,7 @@ func (r *Registry) GracefullyShutdown() bool {
 	failed := false
 	log.Debug("start GracefullyShutdown")
 	for k, v := range r.all {
-		if !IsTerminalStatus(v.Status) {
+		if !IsTerminalStatus(v.GetStatus()) {
 			if err := v.Cancel(); err != nil {
 				log.Debugf("failed cancel job %s %v", v.Id, err)
 				failed = true
