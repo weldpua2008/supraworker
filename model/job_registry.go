@@ -98,7 +98,10 @@ func (r *Registry) Cleanup() (num int) {
 // cancel all running & pending job
 // return false if we can't cancel any job
 func (r *Registry) GracefullyShutdown() bool {
-	r.Cleanup()
+	num := r.Cleanup()
+	if num > 0 {
+		log.Debugf("Successfully cleanup '%d' jobs", num)
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	failed := false

@@ -373,7 +373,7 @@ func (j *Job) FlushSteamsBuffer() error {
 func (j *Job) doSendSteamBuf() error {
 	j.streamsMu.Lock()
 	defer j.streamsMu.Unlock()
-	if len(j.streamsBuf) > 0 {
+	if j.streamsBuf != nil && len(j.streamsBuf) > 0 {
 		// j.GetLogger().Tracef("doSendSteamBuf for '%v' len '%v' %v\n ", j.Id, len(j.streamsBuf),j.streamsBuf)
 
 		streamsReader := strings.NewReader(strings.Join(j.streamsBuf, ""))
