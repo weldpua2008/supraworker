@@ -40,37 +40,37 @@ type Config struct {
 	// delay between API calls to prevent Denial-of-service
 	CallAPIDelaySec int `mapstructure:"api_delay_sec"`
 	// represent API for Jobs
-	JobsAPI ApiOperations `mapstructure:"jobs"`
+	//JobsAPI ApiOperations `mapstructure:"jobs"`
 	// LogsAPI         ApiOperations `mapstructure:"logs"`
-	HeartBeat ApiOperations `mapstructure:"heartbeat"`
+	//HeartBeat ApiOperations `mapstructure:"heartbeat"`
 	// Config version
 	ConfigVersion string `mapstructure:"version"`
 }
 
-// ApiOperations is defines operations structure
-type ApiOperations struct {
-	//Run          UrlConf `mapstructure:"run"`         // defines how to run item
-	//Cancellation UrlConf `mapstructure:"cancelation"` // defines how to cancel item
-	//LogStreams UrlConf `mapstructure:"logstream"` // defines how to get item
-
-	//Get    UrlConf `mapstructure:"get"`    // defines how to get item
-	//Lock   UrlConf `mapstructure:"lock"`   // defines how to lock item
-	//Update UrlConf `mapstructure:"update"` // defines how to update item
-	//Unlock UrlConf `mapstructure:"unlock"` // defines how to unlock item
-	//Finish UrlConf `mapstructure:"finish"` // defines how to finish item
-	//Failed UrlConf `mapstructure:"failed"` // defines how to update on failed
-	//Cancel UrlConf `mapstructure:"cancel"` // defines how to update on cancel
-
-}
+//// ApiOperations is defines operations structure
+//type ApiOperations struct {
+//	//Run          UrlConf `mapstructure:"run"`         // defines how to run item
+//	//Cancellation UrlConf `mapstructure:"cancelation"` // defines how to cancel item
+//	//LogStreams UrlConf `mapstructure:"logstream"` // defines how to get item
+//
+//	//Get    UrlConf `mapstructure:"get"`    // defines how to get item
+//	//Lock   UrlConf `mapstructure:"lock"`   // defines how to lock item
+//	//Update UrlConf `mapstructure:"update"` // defines how to update item
+//	//Unlock UrlConf `mapstructure:"unlock"` // defines how to unlock item
+//	//Finish UrlConf `mapstructure:"finish"` // defines how to finish item
+//	//Failed UrlConf `mapstructure:"failed"` // defines how to update on failed
+//	//Cancel UrlConf `mapstructure:"cancel"` // defines how to update on cancel
+//
+//}
 
 // UrlConf defines all params for request.
-type UrlConf struct {
-	Url             string            `mapstructure:"url"`
-	Method          string            `mapstructure:"method"`
-	Headers         map[string]string `mapstructure:"headers"`
-	PreservedFields map[string]string `mapstructure:"preservedfields"`
-	Params          map[string]string `mapstructure:"params"`
-}
+//type UrlConf struct {
+//	Url             string            `mapstructure:"url"`
+//	Method          string            `mapstructure:"method"`
+//	Headers         map[string]string `mapstructure:"headers"`
+//	PreservedFields map[string]string `mapstructure:"preservedfields"`
+//	Params          map[string]string `mapstructure:"params"`
+//}
 
 var (
 	// CfgFile defines Path to the config.
