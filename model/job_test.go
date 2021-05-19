@@ -414,17 +414,16 @@ func TestJobStatusCommunicators(t *testing.T) {
 
 func TestJobCancelledRandomDelay(t *testing.T) {
 	var yamlString = []byte(`
-    ClientId: "Test"
-    version: "1.0"
-    `)
+  ClientId: "Test"
+  version: "1.0"
+  `)
 
 	C, tmpC := config.StringToCfgForTests(t, yamlString)
 	config.C = C
 	defer func() {
 		config.C = tmpC
 	}()
-
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 10; i++ {
 		job := NewJob("echo", "sleep 10000")
 		job.TTR = uint64((100 * time.Millisecond).Milliseconds())
 		chanDone := make(chan bool)
@@ -437,9 +436,11 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 		go func() {
 			// waiting for a status
 			defer func() { startedChan <- true }()
+			//time.Sleep(100 * time.Millisecond)
 			for job.GetStatus() != JOB_STATUS_IN_PROGRESS {
 				time.Sleep(10 * time.Millisecond)
 			}
+			//time.Sleep(10 * time.Millisecond)
 		}()
 		select {
 		case <-startedChan:
@@ -447,7 +448,7 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 			t.Fatalf("timed out")
 		}
 
-		time.Sleep(time.Duration(i) * time.Millisecond)
+		time.Sleep(time.Duration(i*10) * time.Millisecond)
 		_ = job.Cancel()
 		<-chanDone
 		if job.GetStatus() != JOB_STATUS_CANCELED {

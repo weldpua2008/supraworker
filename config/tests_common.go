@@ -20,6 +20,7 @@ func TestMain(m *testing.M) {
 func StringToCfgForTests(t *testing.T, yaml []byte) (Config, Config) {
 	tmp := C
 	C = Config{}
+	viper.Reset()
 	viper.SetConfigType("yaml")
 
 	if err := viper.ReadConfig(bytes.NewBuffer(yaml)); err != nil {
@@ -40,7 +41,7 @@ func StringToCfgForTests(t *testing.T, yaml []byte) (Config, Config) {
 }
 func LoadCfgForTests(t *testing.T, CfgFile string) (Config, Config) {
 	tmp := C
-
+	viper.Reset()
 	C = Config{}
 	viper.SetConfigFile(CfgFile)
 	// t.Logf("Loaded: %v", CfgFile)
