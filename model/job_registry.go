@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/weldpua2008/supraworker/utils"
 	"sync"
 	"time"
@@ -103,14 +104,16 @@ func (r *Registry) GracefullyShutdown() bool {
 	failed := false
 	log.Debug("start GracefullyShutdown")
 	for k, v := range r.all {
+		msg := fmt.Sprintf("Deleting job %s", v.Id)
 		if !IsTerminalStatus(v.GetStatus()) {
 			if err := v.Cancel(); err != nil {
-				log.Debugf("failed cancel job %s %v", v.Id, err)
+				msg = fmt.Sprintf("failed cancel job %s %v", v.Id, err)
 				failed = true
 			} else {
-				log.Debugf("successfully canceled job %s", v.Id)
+				msg = fmt.Sprintf("successfully canceled job %s", v.Id)
 			}
 		}
+		log.Debugf(msg)
 		delete(r.all, k)
 	}
 	return failed
