@@ -31,6 +31,7 @@ var (
 	verbose   bool
 	traceFlag bool
 	pprofFlag bool
+	promFlag = true
 	log       = logrus.WithFields(logrus.Fields{"package": "cmd"})
 	// maxRequestTimeout is timeout for the cancellation and fetch requests.
 	// it's high in order to fetch a huge jsons or when the network is slow.
@@ -43,10 +44,12 @@ func init() {
 	// will be global for application.
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose")
 	rootCmd.PersistentFlags().BoolVarP(&traceFlag, "trace", "t", false, "trace")
-	rootCmd.PersistentFlags().BoolVarP(&pprofFlag, "pprof", "p", false, "pprof")
+	rootCmd.PersistentFlags().BoolVarP(&pprofFlag, "pprof", "P", false, "pprof")
+	rootCmd.PersistentFlags().BoolVarP(&promFlag, "prometheus", "p", false, "prometheus")
+
 	rootCmd.PersistentFlags().StringVar(&config.ClientId, "clientId", "", "ClientId (default is supraworker)")
 
-	rootCmd.PersistentFlags().IntVarP(&config.NumWorkers, "workers", "w", 5, "Number of workers")
+	rootCmd.PersistentFlags().IntVarP(&config.NumWorkers, "workers", "w", 0, "Number of workers")
 	// local flags, which will only run
 	// when this action is called directly.
 
@@ -111,10 +114,11 @@ var rootCmd = &cobra.Command{
 		healthCheckAddr := config.GetStringTemplatedDefault("healthcheck.listen", ":8080")
 		healthCheckUri := config.GetStringTemplatedDefault("healthcheck.uri", "/health/is_alive")
 		metrics.StartHealthCheck(healthCheckAddr, healthCheckUri)
-
-		prometheusAddr := config.GetStringTemplatedDefault("prometheus.listen", ":8080")
-		prometheusUri := config.GetStringTemplatedDefault("prometheus.uri", "/metrics")
-		metrics.AddPrometheusMetricsHandler(prometheusAddr, prometheusUri)
+		if promFlag {
+			prometheusAddr := config.GetStringTemplatedDefault("prometheus.listen", ":8080")
+			prometheusUri := config.GetStringTemplatedDefault("prometheus.uri", "/metrics")
+			metrics.AddPrometheusMetricsHandler(prometheusAddr, prometheusUri)
+		}
 		if pprofFlag {
 			pprofAddr := config.GetStringTemplatedDefault("pprof.listen", ":8080")
 			pprofUri := config.GetStringTemplatedDefault("pprof.uri", "/debug/pprof")
