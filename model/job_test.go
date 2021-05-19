@@ -427,7 +427,7 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 		config.C = tmpC
 	}()
 	for i := 1; i <= 1000; i++ {
-		job := NewJob("echo", "sleep 10000")
+		job := NewJob(fmt.Sprintf("Job-%d",i), "sleep 10000")
 		//t.Logf("NewJob %d", i)
 		job.TTR = uint64((100 * time.Millisecond).Milliseconds())
 		chanDone := make(chan bool)
@@ -448,17 +448,19 @@ func TestJobCancelledRandomDelay(t *testing.T) {
 		}()
 		select {
 		case <-startedChan:
-		case <-time.After(1 * time.Minute):
+		case <-time.After(10 * time.Second):
 			t.Logf("runtime.NumGoroutine: %v", runtime.NumGoroutine())
 			buf := make([]byte, 1<<16)
 			runtime.Stack(buf, true)
 			t.Logf("%s", buf)
 			t.Fatalf("timed out")
 		}
+		close(startedChan)
 
 		time.Sleep(time.Duration(i*10) * time.Millisecond)
 		_ = job.Cancel()
 		<-chanDone
+		close(chanDone)
 		if job.GetStatus() != JOB_STATUS_CANCELED {
 			t.Errorf("job.GetStatus() '%s' same '%s'\n", job.GetStatus(), JOB_STATUS_CANCELED)
 		}
