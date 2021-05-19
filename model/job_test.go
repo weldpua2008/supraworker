@@ -413,7 +413,7 @@ func TestJobStatusCommunicators(t *testing.T) {
 	}
 }
 
-func TestJobCancelledRandomDelay(t *testing.T) {
+func TestJobTimeoutAndCancel(t *testing.T) {
 	var yamlString = []byte(`
   ClientId: "Test"
   version: "1.0"
