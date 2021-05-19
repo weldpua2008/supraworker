@@ -6,3 +6,5 @@ build/_bin
 .golangci.yml
 .travis.yml
 ./supraworker
+.git
+.git/*
