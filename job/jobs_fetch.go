@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/weldpua2008/supraworker/config"
 	metrics "github.com/weldpua2008/supraworker/metrics"
 	model "github.com/weldpua2008/supraworker/model"
 	"strconv"
@@ -98,7 +99,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				start := time.Now()
 				// TODO: customize timeout
 				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CtxKeyRequestTimeout, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
-					metrics.FetchNewJobLatency.WithLabelValues("api_get").Observe(float64(time.Since(start).Nanoseconds()))
+					metrics.FetchNewJobLatency.WithLabelValues(
+						"api_get", config.C.PrometheusNamespace, config.C.PrometheusService,
+					).Observe(float64(time.Since(start).Nanoseconds()))
 					for _, jobResponse := range jobsData {
 						var JobId string
 						var CMD string
@@ -106,7 +109,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						var ExtraRunUID string
 						var TTR uint64
 						var EnvVar []string
-						metrics.FetchNewJobLatency.WithLabelValues("new_job_response").Observe(float64(time.Since(start).Nanoseconds()))
+						metrics.FetchNewJobLatency.WithLabelValues(
+							"new_job_response", config.C.PrometheusNamespace, config.C.PrometheusService,
+						).Observe(float64(time.Since(start).Nanoseconds()))
 
 						for key, value := range jobResponse {
 
@@ -156,7 +161,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 								ExtraRunUID = fmt.Sprintf("%v", value)
 							}
 						}
-						metrics.FetchNewJobLatency.WithLabelValues("job_response_enriched").Observe(float64(time.Since(start).Nanoseconds()))
+						metrics.FetchNewJobLatency.WithLabelValues(
+							"job_response_enriched", config.C.PrometheusNamespace, config.C.PrometheusService,
+						).Observe(float64(time.Since(start).Nanoseconds()))
 
 						if len(JobId) < 1 {
 							continue
@@ -172,10 +179,14 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 						}
 						job.TTR = TTR
 						job.CmdENV = EnvVar
-						metrics.FetchNewJobLatency.WithLabelValues("new_job_created").Observe(float64(time.Since(start).Nanoseconds()))
+						metrics.FetchNewJobLatency.WithLabelValues(
+							"new_job_created", config.C.PrometheusNamespace, config.C.PrometheusService,
+						).Observe(float64(time.Since(start).Nanoseconds()))
 						job.StartAt = time.Now()
 						if JobsRegistry.Add(job) {
-							metrics.FetchNewJobLatency.WithLabelValues("new_job_appended_to_registry").Observe(float64(time.Since(start).Nanoseconds()))
+							metrics.FetchNewJobLatency.WithLabelValues(
+								"new_job_appended_to_registry", config.C.PrometheusNamespace, config.C.PrometheusService,
+							).Observe(float64(time.Since(start).Nanoseconds()))
 							metrics.JobsProcessed.Inc()
 							jobs <- job
 							j += 1
@@ -188,7 +199,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				} else {
 					log.Tracef("Failed fetch a new Jobs portion due %v ", err)
 				}
-				metrics.FetchNewJobLatency.WithLabelValues("total").Observe(float64(time.Since(start).Nanoseconds()))
+				metrics.FetchNewJobLatency.WithLabelValues(
+					"total", config.C.PrometheusNamespace, config.C.PrometheusService,
+				).Observe(float64(time.Since(start).Nanoseconds()))
 
 			}
 		}
@@ -219,13 +232,17 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 					//	log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
 					//})
 				}
-				metrics.FetchCancelLatency.WithLabelValues("registry_cleanup").Observe(float64(time.Since(start).Nanoseconds()))
+				metrics.FetchCancelLatency.WithLabelValues(
+					"registry_cleanup", config.C.PrometheusNamespace, config.C.PrometheusService,
+				).Observe(float64(time.Since(start).Nanoseconds()))
 
 				stage := "jobs.cancelation"
 				params := model.GetAPIParamsFromSection(stage)
 
 				if err, jobsCancellationData := model.DoApiCall(context.WithValue(ctx, model.CtxKeyRequestTimeout, maxRequestTimeout), params, stage); err != nil {
-					metrics.FetchCancelLatency.WithLabelValues("failed_query").Observe(float64(time.Since(start).Nanoseconds()))
+					metrics.FetchCancelLatency.WithLabelValues(
+						"failed_query", config.C.PrometheusNamespace, config.C.PrometheusService,
+					).Observe(float64(time.Since(start).Nanoseconds()))
 					log.Tracef("failed to update api, got: %s and %s", jobsCancellationData, err)
 				} else {
 
@@ -262,7 +279,9 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 
 					}
 				}
-				metrics.FetchCancelLatency.WithLabelValues("total").Observe(float64(time.Since(start).Nanoseconds()))
+				metrics.FetchCancelLatency.WithLabelValues(
+					"total", config.C.PrometheusNamespace, config.C.PrometheusService,
+				).Observe(float64(time.Since(start).Nanoseconds()))
 
 			}
 

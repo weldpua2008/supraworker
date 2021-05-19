@@ -13,15 +13,15 @@ var (
 		Name:      "latency_ns",
 		Help:      "The latency distribution of jobs in cancellation flow processed",
 	},
-		[]string{"type"},
+		[]string{"type", "namespace", "service"},
 	)
 	FetchNewJobLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: "suprasched",
+		Namespace: "supraworker",
 		Subsystem: "jobs_fetch",
 		Name:      "latency_ns",
 		Help:      "The latency distribution of new jobs processed",
 	},
-		[]string{"type"},
+		[]string{"type", "namespace", "service"},
 	)
 	WorkerStatistics = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -35,6 +35,8 @@ var (
 			"type",
 			// What is the Operation?
 			"operation",
+			"namespace",
+			"service",
 		},
 	)
 

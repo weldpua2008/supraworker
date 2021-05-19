@@ -28,14 +28,15 @@ const (
 // Config is top level Configuration structure
 type Config struct {
 	// Identification for the process
-	ClientId      string `mapstructure:"clientId"`
-	NumActiveJobs int    // Number of jobs
-	NumFreeSlots  int    // Number of free jobs slots
-	NumWorkers    int    `mapstructure:"workers"`
-
-	ClusterId   string `mapstructure:"clusterId"`
-	ClusterPool string `mapstructure:"clusterPool"`
-	URL         string // Used for overload URL for Tests "{{.URL}}"
+	ClientId            string `mapstructure:"clientId"`
+	NumActiveJobs       int    // Number of jobs
+	NumFreeSlots        int    // Number of free jobs slots
+	NumWorkers          int    `mapstructure:"workers"`
+	PrometheusNamespace string
+	PrometheusService   string
+	ClusterId           string `mapstructure:"clusterId"`
+	ClusterPool         string `mapstructure:"clusterPool"`
+	URL                 string // Used for overload URL for Tests "{{.URL}}"
 
 	// delay between API calls to prevent Denial-of-service
 	CallAPIDelaySec int `mapstructure:"api_delay_sec"`
@@ -87,10 +88,17 @@ func updateNumWorkers() {
 	log.Tracef("Using NumWorkers %d", C.NumWorkers)
 }
 
+func updateProm() {
+	C.PrometheusService = GetStringTemplatedDefault("prometheus.service", "default")
+	C.PrometheusNamespace = GetStringTemplatedDefault("prometheus.namespace", "supraworker")
+
+}
+
 // ReinitializeConfig on load or file change
 func ReinitializeConfig() {
 	choseClientId()
 	updateNumWorkers()
+	updateProm()
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -137,6 +145,7 @@ func initConfig() {
 	log.Debug(viper.ConfigFileUsed())
 	choseClientId()
 	updateNumWorkers()
+	updateProm()
 }
 
 func GetStringTemplatedDefault(section string, def string) string {

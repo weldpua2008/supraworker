@@ -89,3 +89,36 @@ func TestLoadConfigNumWorkers(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadConfigPrometheus(t *testing.T) {
+	tmp := C
+	defer func() {
+		C = tmp
+	}()
+	cases := []struct {
+		CfgFile                 string
+		WantPrometheusNamespace string
+		WantPrometheusService   string
+	}{
+		{
+			CfgFile:                 "fixtures/test_prometheus.yaml",
+			WantPrometheusNamespace: "test-prom",
+			WantPrometheusService:   "test-service",
+		},
+	}
+
+	for _, tc := range cases {
+		C = Config{}
+		CfgFile = tc.CfgFile
+		initConfig()
+
+		if C.PrometheusNamespace != tc.WantPrometheusNamespace {
+			t.Logf("Loaded: %v", CfgFile)
+			t.Errorf("Expected C.PrometheusNamespace %s got %s\n", tc.WantPrometheusNamespace, C.PrometheusNamespace)
+		}
+		if C.PrometheusService != tc.WantPrometheusService {
+			t.Logf("Loaded: %v", CfgFile)
+			t.Errorf("Expected C.PrometheusService %s got %s\n", tc.WantPrometheusService, C.PrometheusService)
+		}
+	}
+}

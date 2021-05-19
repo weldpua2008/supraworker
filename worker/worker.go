@@ -3,6 +3,7 @@ package worker
 import (
 	"errors"
 	"fmt"
+	"github.com/weldpua2008/supraworker/config"
 	"github.com/weldpua2008/supraworker/job"
 	"github.com/weldpua2008/supraworker/metrics"
 	"github.com/weldpua2008/supraworker/model"
@@ -27,16 +28,14 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 	defer func() {
 		logWorker.Debugf("[FINISHED]")
 		metrics.WorkerStatistics.WithLabelValues(
-			"finished",
-			fmt.Sprintf("worker-%d", id),
+			"finished", fmt.Sprintf("worker-%d", id), config.C.PrometheusNamespace, config.C.PrometheusService,
 		).Inc()
 		wg.Done()
 	}()
 
 	logWorker.Info("Starting")
 	metrics.WorkerStatistics.WithLabelValues(
-		"live",
-		fmt.Sprintf("worker-%d", id),
+		"live", fmt.Sprintf("worker-%d", id), config.C.PrometheusNamespace, config.C.PrometheusService,
 	).Inc()
 	for j := range jobs {
 
@@ -46,8 +45,7 @@ func StartWorker(id int, jobs <-chan *model.Job, wg *sync.WaitGroup) {
 
 		logJob.Tracef("New Job with TTR %v", time.Duration(j.TTR)*time.Millisecond)
 		metrics.WorkerStatistics.WithLabelValues(
-			"newjob",
-			fmt.Sprintf("worker-%v", id),
+			"newjob", fmt.Sprintf("worker-%v", id), config.C.PrometheusNamespace, config.C.PrometheusService,
 		).Inc()
 		mu.Lock()
 		NumActiveJobs += 1
