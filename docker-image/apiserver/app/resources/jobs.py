@@ -99,15 +99,15 @@ class NewJobList(Resource):
             for elem in ret:
                 query(
                     f"UPDATE jobs SET status='propogated' WHERE id={elem['job_id']} AND status IN ('PENDING')")
-            ret = []
-            for row in query("SELECT * from jobs WHERE status in ('propogated')"):
-                ret.append({
-                    **row,
-                    'job_id': str(row['id']),
-                    'job_status': row['status'],
-                    'jobFlowId': args['jobFlowId'],
-                    'created_at': row['created_at'].isoformat(),
-                })
+            # ret = []
+            # for row in query("SELECT * from jobs WHERE status in ('propogated')"):
+            #     ret.append({
+            #         **row,
+            #         'job_id': str(row['id']),
+            #         'job_status': row['status'],
+            #         'jobFlowId': args['jobFlowId'],
+            #         'created_at': row['created_at'].isoformat(),
+            #     })
             if ret:
                 logger.info(f"New {len(ret)} jobs")
             status_code = 200

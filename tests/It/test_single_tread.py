@@ -149,9 +149,11 @@ class TestIt(unittest.TestCase):
     def test_timeout_jobs_more_than_workers(self, n):
         num = n * 2
         actual = self.add_jobs_and_wait_statuses(status='TIMEOUT', num=num, cmd='sleep 10000', ttr='1')
-
-        curr = utils.query(
-            f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+        sql = f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id"
+        for row in utils.query(sql):
+            if row['status'] != 'TIMEOUT':
+                time.sleep(5)
+        curr = utils.query(sql)
         for row in curr:
             self.assertEqual(row['status'], 'TIMEOUT')
 
@@ -162,8 +164,11 @@ class TestIt(unittest.TestCase):
     def test_failed_jobs_more_than_workers(self, n):
         num = n * 2
         actual = self.add_jobs_and_wait_statuses(status='FAILED', num=num, cmd='exit 2', ttr='10100')
-        curr = utils.query(
-            f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id")
+        sql = f"SELECT * from jobs WHERE status not in ('{self.pending_state}', '{self.promotion_state}') ORDER BY id"
+        curr = utils.query(sql)
+        for row in utils.query(sql):
+            if row['status'] != 'TIMEOUT':
+                time.sleep(3)
         for row in curr:
             self.assertEqual(row['status'], 'FAILED')
 

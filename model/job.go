@@ -283,22 +283,16 @@ func (j *Job) HitTimeout() bool {
 // update your API
 func (j *Job) Timeout() error {
 	j.mu.Lock()
-	defer func() {
-		// Fix race condition
-		j.mu.Unlock()
-	}()
-
+	defer j.mu.Unlock()
 	if !IsTerminalStatus(j.Status) {
 		if errUpdate := j.updateStatus(JOB_STATUS_TIMEOUT); errUpdate != nil {
 			j.GetLogger().Warningf("failed to change status '%s' -> '%s'", j.Status, JOB_STATUS_ERROR)
 		}
 		j.updatelastActivity()
 		j.doApiCall("timeout")
-
 	} else if j.Status != JOB_STATUS_TIMEOUT {
 		j.GetLogger().Tracef("[TIMEOUT] is already in terminal state %s", j.Status)
 	}
-
 	return j.stopProcess()
 }
 

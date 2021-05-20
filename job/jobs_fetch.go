@@ -212,7 +212,6 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 	// exists on kill
 
 	log.Infof("Fetching jobs for cancellation with delay %v", interval)
-
 	go func() {
 		j := 0
 		for {
@@ -227,7 +226,7 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				start := time.Now()
 				if n := JobsRegistry.Cleanup(); n > 0 {
 					j += n
-					log.Tracef("Cleared %d/%d jobs", n, j)
+					log.Tracef("Cleared %d/%d, already processed %d jobs", n, n+JobsRegistry.Len(), j)
 					//JobsRegistry.Map(func(key string, job *model.Job) {
 					//	log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
 					//})
