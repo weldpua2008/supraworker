@@ -88,7 +88,7 @@ func DoApi(ctx context.Context, params map[string]interface{}, stage string) err
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	defaultRequestTimeout := time.Duration(60) * time.Second
+	defaultRequestTimeout := communicator.DefaultRequestTimeout
 	if value := ctx.Value(CtxKeyRequestTimeout); value != nil {
 		if duration, errParseDuration := time.ParseDuration(fmt.Sprintf("%v", value)); errParseDuration == nil {
 			defaultRequestTimeout = duration
@@ -145,7 +145,8 @@ func DoApiCall(ctx context.Context, params map[string]string, stage string) (err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	defaultRequestTimeout := 60 * time.Second
+
+	defaultRequestTimeout:= communicator.DefaultRequestTimeout
 	// TODO: Add a test
 	if ctx != nil {
 		if value := ctx.Value(CtxKeyRequestTimeout); value != nil {
@@ -214,7 +215,7 @@ func NewRemoteApiRequest(ctx context.Context, section string, method string, url
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	defaultRequestTimeout := 60 * time.Second
+	defaultRequestTimeout := communicator.DefaultRequestTimeout
 	// TODO: Add a test
 	if ctx != nil {
 		if value := ctx.Value(CtxKeyRequestTimeout); value != nil {

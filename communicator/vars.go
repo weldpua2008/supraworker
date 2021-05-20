@@ -3,6 +3,7 @@ package communicator
 import (
 	"errors"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type ContextKey string
@@ -21,7 +22,6 @@ var (
 
 	// internal
 	log = logrus.WithFields(logrus.Fields{"package": "communicator"})
-	//globalHttpClient = &http.Client{Timeout: 120 * time.Second}
 )
 
 const (
@@ -29,4 +29,5 @@ const (
 	ConstructorsTypeRest               = "HTTP"
 	CtxAllowedResponseCodes ContextKey = "allowed_response_codes"
 	CtxRequestTimeout       ContextKey = "ctx_req_timeout"
+	DefaultRequestTimeout = 120 * time.Second
 )

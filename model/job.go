@@ -303,14 +303,12 @@ func (j *Job) Timeout() error {
 //	- after slow log interval
 func (j *Job) AppendLogStream(logStream []string) (err error) {
 	if j.quotaHit() {
-		//<-j.notify
-		select {
-		case <-j.notify:
-		case <-time.After(120 * time.Second):
-			j.GetLogger().Warningf("Timeout AppendLogStream")
-
-		}
-
+		<-j.notify
+		//select {
+		//case <-j.notify:
+		//case <-time.After(600 * time.Second):
+		//	j.GetLogger().Warningf("Timeout AppendLogStream")
+		//}
 		err = j.doSendSteamBuf()
 	}
 	j.incrementCounter()

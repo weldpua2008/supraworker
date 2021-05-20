@@ -170,7 +170,7 @@ func (s *RestCommunicator) fetch(ctx context.Context, params map[string]interfac
 
 	allowedResponseCodes := config.GetIntSlice(s.section,
 		config.CFG_PREFIX_ALLOWED_RESPONSE_CODES, []int{200, 201, 202})
-	requestTimeout := 120 * time.Second
+	requestTimeout := DefaultRequestTimeout
 	if v := ctx.Value(CtxAllowedResponseCodes); v != nil {
 		if val, ok := v.([]int); ok {
 			allowedResponseCodes = val
