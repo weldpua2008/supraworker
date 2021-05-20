@@ -97,6 +97,15 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				return
 			case <-tickerGenerateJobs.C:
 				start := time.Now()
+				// Cleanup all processed jobs
+				// we do this in this thread since new jobs can include jobs that are already on workers
+				if n := JobsRegistry.Cleanup(); n > 0 {
+					j += n
+					log.Tracef("Cleared %d/%d, already processed %d jobs", n, n+JobsRegistry.Len(), j)
+					//JobsRegistry.Map(func(key string, job *model.Job) {
+					//	log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
+					//})
+				}
 				// TODO: customize timeout
 				if err, jobsData := model.NewRemoteApiRequest(context.WithValue(ctx, model.CtxKeyRequestTimeout, maxRequestTimeout), "jobs.get.params", model.FetchNewJobAPIMethod, model.FetchNewJobAPIURL); err == nil {
 					metrics.FetchNewJobLatency.WithLabelValues(
@@ -224,13 +233,6 @@ func StartGenerateJobs(ctx context.Context, jobs chan *model.Job, interval time.
 				return
 			case <-tickerCancelJobs.C:
 				start := time.Now()
-				if n := JobsRegistry.Cleanup(); n > 0 {
-					j += n
-					log.Tracef("Cleared %d/%d, already processed %d jobs", n, n+JobsRegistry.Len(), j)
-					//JobsRegistry.Map(func(key string, job *model.Job) {
-					//	log.Tracef("Left Job %s => %p in %s cmd: %s", job.StoreKey(), job, job.Status, job.CMD)
-					//})
-				}
 				metrics.FetchCancelLatency.WithLabelValues(
 					"registry_cleanup", config.C.PrometheusNamespace, config.C.PrometheusService,
 				).Observe(float64(time.Since(start).Nanoseconds()))
