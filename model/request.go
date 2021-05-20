@@ -146,7 +146,7 @@ func DoApiCall(ctx context.Context, params map[string]string, stage string) (err
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	defaultRequestTimeout:= communicator.DefaultRequestTimeout
+	defaultRequestTimeout := communicator.DefaultRequestTimeout
 	// TODO: Add a test
 	if ctx != nil {
 		if value := ctx.Value(CtxKeyRequestTimeout); value != nil {

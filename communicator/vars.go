@@ -29,5 +29,5 @@ const (
 	ConstructorsTypeRest               = "HTTP"
 	CtxAllowedResponseCodes ContextKey = "allowed_response_codes"
 	CtxRequestTimeout       ContextKey = "ctx_req_timeout"
-	DefaultRequestTimeout = 120 * time.Second
+	DefaultRequestTimeout              = 120 * time.Second
 )
