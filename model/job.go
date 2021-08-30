@@ -370,6 +370,7 @@ func (j *Job) TimeoutWithCancel(duration time.Duration) error {
 //  - high volume log producers - after j.elements
 //	- after buffer is full
 //	- after slow log interval
+// TODO: try to use channel
 func (j *Job) AppendLogStream(logStream []string) (err error) {
 	if j.quotaHit() {
 		//<-j.notify
