@@ -31,7 +31,7 @@ brew upgrade weldpua2008/tap/supraworker
 
 #### Installation from source code
 
-Find the version you wish to install on the [GitHub Releases
+* Find the version you wish to install on the [GitHub Releases
 page](https://github.com/weldpua2008/supraworker/releases) and download either the
 `darwin-amd64` binary for MacOS or the `linux-amd64` binary for Linux. No other
 operating systems or architectures have pre-built binaries at this time.
