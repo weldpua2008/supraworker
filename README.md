@@ -17,6 +17,8 @@ Prerequisite:
 
 ## Installation 
 ### MacOs X
+
+###### Binary installation 
 Homebrew is a free and open-source package management system for Mac OS X.
 ```bash
  brew tap weldpua2008/tap
@@ -26,7 +28,9 @@ To update to the latest, run
 ```bash
 brew upgrade weldpua2008/tap/supraworker
 ```
-#### Installation from source code
+
+##### Installation from source code
+
 Find the version you wish to install on the [GitHub Releases
 page](https://github.com/weldpua2008/supraworker/releases) and download either the
 `darwin-amd64` binary for MacOS or the `linux-amd64` binary for Linux. No other
