@@ -35,11 +35,10 @@ brew upgrade weldpua2008/tap/supraworker
 page](https://github.com/weldpua2008/supraworker/releases) and download either the
 `darwin-amd64` binary for MacOS or the `linux-amd64` binary for Linux. No other
 operating systems or architectures have pre-built binaries at this time.
----
+
 > **_NOTE:_** Running releasses on MacOs:
-You need to download file, extract it and remove attributes with
-the following command (where ~/Downloads/supraworker_darwin_amd64/supraworker is Path to the file)
----
+> You need to download file, extract it and remove attributes with
+> the following command (where ~/Downloads/supraworker_darwin_amd64/supraworker is Path to the file)
 
 ```bash
 $ xattr -d com.apple.quarantine ~/Downloads/supraworker_darwin_amd64/supraworker
