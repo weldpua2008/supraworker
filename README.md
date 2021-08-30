@@ -18,7 +18,7 @@ Prerequisite:
 ## Installation 
 ### MacOs X
 
-##### Binary installation 
+#### Binary installation 
 Homebrew is a free and open-source package management system for Mac OS X.
 ```bash
  brew tap weldpua2008/tap
